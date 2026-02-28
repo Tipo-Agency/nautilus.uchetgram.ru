@@ -130,11 +130,28 @@ else
   echo "⚠️ telegram-bot directory not found, skipping..."
 fi
 
-# 5. Перезагружаем nginx
+# 5. Деплой конфига nginx и перезагрузка (чтобы root и favicon всегда актуальны)
 echo ""
-echo "🔄 Step 5: Reloading nginx..."
-nginx -t || echo "⚠️ nginx config test failed"
-systemctl reload nginx || echo "⚠️ nginx reload failed"
+echo "🔄 Step 5: Nginx config and reload..."
+if [ -f "deploy/nautilus.nginx.conf" ]; then
+  NGINX_DEST="/etc/nginx/sites-available/nautilus.uchetgram.ru"
+  sed -e "s|__SERVER_PATH__|$SERVER_PATH|g" -e "s|__DIST_LINK__|$DIST_LINK|g" deploy/nautilus.nginx.conf | sudo tee "$NGINX_DEST" > /dev/null 2>&1
+  if [ $? -eq 0 ]; then
+    sudo ln -sf "$NGINX_DEST" /etc/nginx/sites-enabled/nautilus.uchetgram.ru 2>/dev/null || true
+    if sudo nginx -t 2>/dev/null; then
+      sudo systemctl reload nginx 2>/dev/null && echo "✅ Nginx config updated and reloaded" || echo "⚠️ nginx reload failed (sudo?)"
+    else
+      echo "⚠️ nginx -t failed, config not reloaded"
+    fi
+  else
+    echo "⚠️ Could not write nginx config (sudo?). Add sudoers rule — see DEPLOY_SETUP.md"
+    nginx -t 2>/dev/null || true
+    systemctl reload nginx 2>/dev/null || true
+  fi
+else
+  nginx -t || echo "⚠️ nginx config test failed"
+  systemctl reload nginx || echo "⚠️ nginx reload failed"
+fi
 
 # Финальный статус
 echo ""

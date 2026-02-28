@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { TableCollection, User, Role } from '../types';
 import { DynamicIcon } from './AppIcons';
-import { Logo } from './Logo';
+import { Logo, LogoCompact } from './Logo';
 
 interface SidebarProps {
   isOpen: boolean; // Mobile state
@@ -114,7 +114,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => handleNav(() => onNavigate('home'))}
                 className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-center'} hover:bg-notion-hover dark:hover:bg-[#252525] rounded cursor-pointer transition-colors p-2 ${isCollapsed ? 'w-full' : 'flex-1'}`}
             >
-                <Logo className="h-6 w-auto max-w-[140px]" />
+                <LogoCompact className="h-8 w-auto lg:hidden" />
+                <Logo className="h-6 w-auto max-w-[140px] hidden lg:block" />
             </div>
             {!isCollapsed && (
               <div className="flex items-center gap-1 shrink-0">
