@@ -13,8 +13,9 @@ from app.models import *  # noqa: F401
 
 config = context.config
 settings = get_settings()
-# Use async URL for async migrations
 db_url = settings.DATABASE_URL
+if "sqlite" in db_url.lower():
+    raise ValueError("Alembic: DATABASE_URL must be PostgreSQL (postgresql+asyncpg://...). SQLite is not allowed.")
 if "+asyncpg" not in db_url:
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 config.set_main_option("sqlalchemy.url", db_url)

@@ -54,22 +54,48 @@ ln -sfn "$BUILD_DIR" "$DIST_LINK"
 [ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
 echo "✅ Frontend deployed → $DIST_LINK"
 
-# 3. Деплой Python API: venv никогда из git — всегда пересоздаём на сервере
+# 3. Деплой Python API: PostgreSQL обязателен, venv пересоздаётся, миграции, перезапуск
 if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   echo ""
-  echo "🐍 Step 3: Deploying Python API (fresh venv)..."
+  echo "🐍 Step 3: Deploying Python API (PostgreSQL only, fresh venv)..."
+  # .env не перезаписываем — только проверяем наличие DATABASE_URL
+  if [ ! -f "$SERVER_PATH/server/.env" ]; then
+    echo "❌ server/.env not found. Create it with DATABASE_URL=postgresql+asyncpg://..."
+    exit 1
+  fi
+  if ! grep -q '^DATABASE_URL=' "$SERVER_PATH/server/.env" 2>/dev/null; then
+    echo "❌ server/.env must contain DATABASE_URL=postgresql+asyncpg://... (PostgreSQL required, no SQLite)"
+    exit 1
+  fi
+  if grep -i 'sqlite' "$SERVER_PATH/server/.env" 2>/dev/null | grep -q '^DATABASE_URL='; then
+    echo "❌ DATABASE_URL must not be SQLite. Use PostgreSQL (postgresql+asyncpg://...)"
+    exit 1
+  fi
   (cd "$SERVER_PATH/server" && {
     rm -rf venv
     python3 -m venv venv
     . venv/bin/activate && pip install -q -r requirements.txt
-  }) || { echo "⚠️ Python API venv/pip failed"; exit 1; }
-  # Обновляем systemd unit из репо (путь к uvicorn из venv на сервере)
+  }) || { echo "❌ Python API venv/pip failed"; exit 1; }
+  (cd "$SERVER_PATH/server" && . venv/bin/activate && python -c "import asyncpg; import alembic" 2>/dev/null) || {
+    echo "❌ asyncpg or alembic not installed. Check requirements.txt."
+    exit 1
+  }
+  (cd "$SERVER_PATH/server" && . venv/bin/activate && alembic upgrade head) || {
+    echo "❌ alembic upgrade head failed. Check PostgreSQL is running and DATABASE_URL in server/.env is correct."
+    exit 1
+  }
   if [ -f "deploy/nautilus-api.service" ]; then
     sed "s|__SERVER_PATH__|$SERVER_PATH|g" deploy/nautilus-api.service | sudo tee /etc/systemd/system/nautilus-api.service > /dev/null 2>&1
     sudo systemctl daemon-reload 2>/dev/null || true
   fi
-  sudo systemctl restart nautilus-api.service 2>/dev/null || echo "⚠️ sudo systemctl restart nautilus-api failed (service may not exist yet)"
-  echo "✅ Python API updated (venv recreated, nautilus-api restarted)"
+  sudo systemctl restart nautilus-api.service 2>/dev/null || { echo "⚠️ sudo systemctl restart nautilus-api failed"; exit 1; }
+  sleep 2
+  if ! systemctl is-active --quiet nautilus-api.service 2>/dev/null; then
+    echo "❌ nautilus-api failed to start after deploy. Logs:"
+    sudo journalctl -u nautilus-api.service -n 30 --no-pager 2>/dev/null || true
+    exit 1
+  fi
+  echo "✅ Python API updated (venv recreated, migrations applied, nautilus-api running)"
 fi
 
 # 4. Деплой Telegram бота

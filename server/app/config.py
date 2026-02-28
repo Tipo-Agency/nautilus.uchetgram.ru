@@ -1,14 +1,23 @@
 """Application configuration."""
-import os
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    """Application settings from environment."""
+    """Application settings from environment. Production requires PostgreSQL (no SQLite)."""
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://taska:taska@localhost:5432/taska"
+    # Database — обязателен в production; SQLite запрещён
+    DATABASE_URL: str = ""
+
+    @model_validator(mode="after")
+    def check_database_url(self) -> "Settings":
+        if not self.DATABASE_URL or "sqlite" in self.DATABASE_URL.lower():
+            raise ValueError(
+                "DATABASE_URL must be set to a PostgreSQL URL (e.g. postgresql+asyncpg://user:pass@host:5432/db). "
+                "SQLite is not allowed. Set DATABASE_URL in server/.env or environment."
+            )
+        return self
 
     # Auth
     SECRET_KEY: str = "change-me-in-production-use-openssl-rand-hex-32"

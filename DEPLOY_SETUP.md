@@ -111,7 +111,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-Создай `.env` в `server/` с `DATABASE_URL`, `SECRET_KEY` и т.д.
+Создай `.env` в `server/` с `DATABASE_URL` (обязательно PostgreSQL: `postgresql+asyncpg://user:pass@host:5432/db`, SQLite запрещён), `SECRET_KEY` и т.д. При деплое `.env` не перезаписывается.
 
 ### 3.8. Первый ручной деплой (проверка)
 

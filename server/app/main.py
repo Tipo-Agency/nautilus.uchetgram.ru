@@ -1,6 +1,4 @@
 """FastAPI application entry point."""
-import os
-import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -41,16 +39,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run migrations on startup."""
-    from alembic.config import Config
-    from alembic import command
-
-    server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    alembic_cfg = Config(os.path.join(server_dir, "alembic.ini"))
-    try:
-        command.upgrade(alembic_cfg, "head")
-    except Exception as e:
-        print(f"Migration warning: {e}", file=sys.stderr)
+    """Lifespan: no migrations here — run `alembic upgrade head` in deploy script before starting the service."""
     yield
 
 
