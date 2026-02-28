@@ -14,9 +14,10 @@ echo "📁 Server path: $SERVER_PATH"
 # Переходим в директорию проекта
 cd "$SERVER_PATH" || { echo "❌ Failed to cd to $SERVER_PATH"; exit 1; }
 
-# Права на каталог (нужен NOPASSWD для chown в sudoers, иначе будет "permission denied" на dist/)
-sudo chown -R "$USER:$USER" "$SERVER_PATH" 2>/dev/null || true
-[ -d ".git" ] && sudo chown -R "$USER:$USER" "$SERVER_PATH/.git" 2>/dev/null || true
+# Если скрипт запущен через sudo (DEPLOY_USER задан), работаем от root — тогда rm dist и сборка проходят
+RUN_AS_ROOT=
+[ -n "$DEPLOY_USER" ] && [ "$(id -u)" = "0" ] && RUN_AS_ROOT=1
+
 git config --global --add safe.directory "$SERVER_PATH" 2>/dev/null || true
 
 # 1. Обновляем код
@@ -31,7 +32,7 @@ echo ""
 echo "🚀 Step 2: Deploying frontend..."
 if [ -d "dist" ]; then
   if ! rm -rf dist; then
-    echo "❌ Cannot remove dist/. Configure sudoers (see DEPLOY_SETUP.md): NOPASSWD for /usr/bin/chown"
+    echo "❌ Cannot remove dist/. Run deploy with sudo (workflow: sudo -E ./scripts/deploy.sh) and add to sudoers: deploy ALL=(ALL) NOPASSWD: /bin/bash $SERVER_PATH/scripts/deploy.sh"
     exit 1
   fi
 fi
@@ -144,6 +145,14 @@ if systemctl is-active --quiet nginx 2>/dev/null; then
   echo "   Nginx: ✅ Running"
 else
   echo "   Nginx: ⚠️ Not running"
+fi
+
+# После деплоя под sudo возвращаем владельца deploy, чтобы не копить файлы от root
+if [ -n "$RUN_AS_ROOT" ] && [ -n "$DEPLOY_USER" ]; then
+  echo ""
+  echo "🔧 Fixing ownership for $DEPLOY_USER..."
+  chown -R "$DEPLOY_USER:$DEPLOY_USER" "$SERVER_PATH" || true
+  echo "✅ Done"
 fi
 
 exit 0

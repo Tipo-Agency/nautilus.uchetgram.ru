@@ -73,13 +73,15 @@ cd /var/www/nautilus.uchetgram.ru
 
 ### 3.4. Sudoers для deploy (обязательно)
 
-Без NOPASSWD деплой упадёт на «permission denied» при очистке `dist/`. Добавь в sudoers:
+Деплой запускается через `sudo ./scripts/deploy.sh`, иначе не очищается `dist/`. Один раз на сервере:
 
 ```bash
 sudo visudo
-# В конец файла (подставь свой путь и пользователя):
-deploy ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/chmod, /usr/bin/systemctl reload nginx, /usr/bin/systemctl restart telegram-bot.service, /usr/bin/systemctl restart nautilus-api.service, /usr/bin/systemctl restart nautilus-backend.service, /usr/bin/cp
+# Одна строка (путь — как у тебя SERVER_PATH, пользователь — как SERVER_USER):
+deploy ALL=(ALL) NOPASSWD: /var/www/nautilus.uchetgram.ru/scripts/deploy.sh
 ```
+
+Если путь другой — подставь свой (например `/home/deploy/app/scripts/deploy.sh`).
 
 ### 3.5. Node.js, npm, Python
 
