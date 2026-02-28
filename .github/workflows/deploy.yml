@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Ручной запуск: Actions → Auto Deploy Nautilus → Run workflow
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Deploy to server via SSH
@@ -16,13 +18,13 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          script_timeout: 8m
           script: |
-            cd ${{ secrets.SERVER_PATH }}
-            # Сначала обновляем код, чтобы скрипт был доступен
+            set -e
+            cd "${{ secrets.SERVER_PATH }}"
             git fetch origin
             git reset --hard origin/main
-            # Теперь вызываем скрипт деплоя
             chmod +x scripts/deploy.sh
-            SERVER_PATH="${{ secrets.SERVER_PATH }}" \
-            TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}" \
+            export SERVER_PATH="${{ secrets.SERVER_PATH }}"
+            export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
             ./scripts/deploy.sh

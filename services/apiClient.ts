@@ -1,10 +1,10 @@
 /**
  * HTTP API client for Python FastAPI backend.
  * Replaces localStorage-backed backend with REST calls.
+ * Backend prefix: /api/v1 (FastAPI app mounted at /api/v1).
  */
-// VITE_API_URL: full base (e.g. http://localhost:8000/api) or empty for same-origin /api (proxied)
 const env = typeof import.meta !== 'undefined' && (import.meta as { env?: Record<string, string> }).env;
-const API_BASE = (env?.VITE_API_URL ?? '/api').replace(/\/$/, '');
+const API_BASE = (env?.VITE_API_URL ?? '/api/v1').replace(/\/$/, '');
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
