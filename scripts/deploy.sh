@@ -19,6 +19,8 @@ git config --global --add safe.directory "$SERVER_PATH" 2>/dev/null || true
 # 1. Обновляем код
 echo ""
 echo "📥 Step 1: Updating code..."
+# Убираем server/venv с диска до reset, чтобы git не падал с Permission denied (venv не должен быть в репо)
+rm -rf server/venv 2>/dev/null || true
 git fetch origin || { echo "⚠️ git fetch failed"; exit 1; }
 git reset --hard origin/main || { echo "⚠️ git reset failed"; exit 1; }
 echo "✅ Code updated"
