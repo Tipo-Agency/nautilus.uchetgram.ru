@@ -1,0 +1,17 @@
+# Копируется при деплое с подстановкой __SERVER_PATH__.
+# Устанавливается в /etc/systemd/system/nautilus-api.service
+# Uvicorn запускается из venv на сервере (не из репо).
+[Unit]
+Description=Nautilus FastAPI
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=__SERVER_PATH__/server
+EnvironmentFile=__SERVER_PATH__/server/.env
+ExecStart=__SERVER_PATH__/server/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

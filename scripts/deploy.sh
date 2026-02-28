@@ -54,18 +54,22 @@ ln -sfn "$BUILD_DIR" "$DIST_LINK"
 [ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
 echo "✅ Frontend deployed → $DIST_LINK"
 
-# 3. Деплой Python API (если есть server/)
+# 3. Деплой Python API: venv никогда из git — всегда пересоздаём на сервере
 if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   echo ""
-  echo "🐍 Step 3: Deploying Python API..."
+  echo "🐍 Step 3: Deploying Python API (fresh venv)..."
   (cd "$SERVER_PATH/server" && {
-    [ -d "venv" ] || python3 -m venv venv
+    rm -rf venv
+    python3 -m venv venv
     . venv/bin/activate && pip install -q -r requirements.txt
-  }) || echo "⚠️ Python API step failed"
-  if systemctl list-unit-files 2>/dev/null | grep -qE 'nautilus-api|nautilus-backend'; then
-    sudo systemctl restart nautilus-api.service 2>/dev/null || sudo systemctl restart nautilus-backend.service 2>/dev/null || true
+  }) || { echo "⚠️ Python API venv/pip failed"; exit 1; }
+  # Обновляем systemd unit из репо (путь к uvicorn из venv на сервере)
+  if [ -f "deploy/nautilus-api.service" ]; then
+    sed "s|__SERVER_PATH__|$SERVER_PATH|g" deploy/nautilus-api.service | sudo tee /etc/systemd/system/nautilus-api.service > /dev/null 2>&1
+    sudo systemctl daemon-reload 2>/dev/null || true
   fi
-  echo "✅ Python API updated"
+  sudo systemctl restart nautilus-api.service 2>/dev/null || echo "⚠️ sudo systemctl restart nautilus-api failed (service may not exist yet)"
+  echo "✅ Python API updated (venv recreated, nautilus-api restarted)"
 fi
 
 # 4. Деплой Telegram бота
