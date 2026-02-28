@@ -23,25 +23,25 @@ git fetch origin || { echo "⚠️ git fetch failed"; exit 1; }
 git reset --hard origin/main || { echo "⚠️ git reset failed"; exit 1; }
 echo "✅ Code updated"
 
-# 2. Деплой фронтенда (сборка в новую папку + symlink, без sudo и без удаления чужого dist)
+# 2. Деплой фронтенда (сборка в новую папку + symlink; если dist не удаляется — используем dist.live)
 echo ""
 echo "🚀 Step 2: Deploying frontend..."
+DIST_LINK="dist"
 if [ -e "dist" ] && [ ! -L "dist" ]; then
-  # dist — каталог (не symlink), возможно от root; без sudo не трогаем
   if ! rm -rf dist 2>/dev/null; then
-    echo "❌ dist/ есть и не удаляется. Один раз на сервере выполни: sudo rm -rf $SERVER_PATH/dist"
-    exit 1
+    echo "⚠️ dist/ не удаляется (права) — собираем в dist.live, nginx должен отдавать root $SERVER_PATH/dist.live"
+    DIST_LINK="dist.live"
   fi
 fi
 npm ci || { echo "❌ npm ci failed"; exit 1; }
-BUILD_DIR="dist.$(date +%s)"
+BUILD_DIR="${DIST_LINK}.$(date +%s)"
 PREV_LINK=
-[ -L "dist" ] && PREV_LINK=$(readlink dist)
+[ -L "$DIST_LINK" ] && PREV_LINK=$(readlink "$DIST_LINK")
 export VITE_OUT_DIR="$BUILD_DIR"
 npm run build || { echo "❌ npm build failed"; exit 1; }
-ln -sfn "$BUILD_DIR" dist
+ln -sfn "$BUILD_DIR" "$DIST_LINK"
 [ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
-echo "✅ Frontend deployed"
+echo "✅ Frontend deployed → $DIST_LINK"
 
 # 3. Деплой Python API (если есть server/)
 if [ -d "server" ] && [ -f "server/requirements.txt" ]; then

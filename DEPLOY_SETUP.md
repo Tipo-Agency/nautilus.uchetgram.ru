@@ -71,15 +71,15 @@ sudo -u deploy git clone git@github.com:Tipo-Agency/nautilus.uchetgram.ru.git /v
 cd /var/www/nautilus.uchetgram.ru
 ```
 
-### 3.4. Один раз убрать старый dist (если деплой падал с «permission denied»)
+### 3.4. Если деплой писал «dist/ не удаляется» — nginx на dist.live
 
-Сборка идёт в новую папку и переключается через symlink, **sudo в деплое не нужен**. Если на сервере уже есть каталог `dist/`, созданный от root, один раз выполни:
+Скрипт при неудачном удалении `dist/` собирает в **dist.live** (symlink). В nginx укажи корень сайта на него:
 
-```bash
-sudo rm -rf /var/www/nautilus.uchetgram.ru/dist
+```nginx
+root /var/www/nautilus.uchetgram.ru/dist.live;
 ```
 
-(подставь свой путь, как в SERVER_PATH). Дальнейшие деплои будут без sudo.
+(вместо `.../dist`). Либо один раз на сервере: `sudo rm -rf /var/www/nautilus.uchetgram.ru/dist` — тогда дальше будет использоваться `dist`.
 
 ### 3.5. Node.js, npm, Python
 
