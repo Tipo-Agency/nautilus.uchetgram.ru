@@ -14,6 +14,9 @@ echo "📁 Server path: $SERVER_PATH"
 # Переходим в директорию проекта
 cd "$SERVER_PATH" || { echo "❌ Failed to cd to $SERVER_PATH"; exit 1; }
 
+# Права на каталог (нужен NOPASSWD для chown в sudoers, иначе будет "permission denied" на dist/)
+sudo chown -R "$USER:$USER" "$SERVER_PATH" 2>/dev/null || true
+[ -d ".git" ] && sudo chown -R "$USER:$USER" "$SERVER_PATH/.git" 2>/dev/null || true
 git config --global --add safe.directory "$SERVER_PATH" 2>/dev/null || true
 
 # 1. Обновляем код
@@ -26,10 +29,9 @@ echo "✅ Code updated"
 # 2. Деплой фронтенда
 echo ""
 echo "🚀 Step 2: Deploying frontend..."
-# Очищаем dist без sudo — иначе Vite не сможет перезаписать (EACCES). Каталог должен принадлежать $USER.
 if [ -d "dist" ]; then
   if ! rm -rf dist; then
-    echo "❌ Cannot remove dist/ (permission denied). On server run: sudo chown -R $USER:$USER $SERVER_PATH"
+    echo "❌ Cannot remove dist/. Configure sudoers (see DEPLOY_SETUP.md): NOPASSWD for /usr/bin/chown"
     exit 1
   fi
 fi

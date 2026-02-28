@@ -71,14 +71,14 @@ sudo -u deploy git clone git@github.com:Tipo-Agency/nautilus.uchetgram.ru.git /v
 cd /var/www/nautilus.uchetgram.ru
 ```
 
-### 3.4. Sudoers для deploy
+### 3.4. Sudoers для deploy (обязательно)
 
-Пользователю `deploy` нужны права без пароля для systemctl и chown:
+Без NOPASSWD деплой упадёт на «permission denied» при очистке `dist/`. Добавь в sudoers:
 
 ```bash
 sudo visudo
-# Добавь:
-deploy ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload nginx, /usr/bin/systemctl restart telegram-bot.service, /usr/bin/systemctl restart nautilus-api.service, /usr/bin/systemctl restart nautilus-backend.service, /usr/bin/chown *
+# В конец файла (подставь свой путь и пользователя):
+deploy ALL=(ALL) NOPASSWD: /usr/bin/chown, /usr/bin/chmod, /usr/bin/systemctl reload nginx, /usr/bin/systemctl restart telegram-bot.service, /usr/bin/systemctl restart nautilus-api.service, /usr/bin/systemctl restart nautilus-backend.service, /usr/bin/cp
 ```
 
 ### 3.5. Node.js, npm, Python
