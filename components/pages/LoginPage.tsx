@@ -1,14 +1,21 @@
 /**
- * LoginPage — демо: один вход по кнопке «Вход»
+ * LoginPage — вход по кнопке «Вход». Если с API пришли пользователи — вход первым; иначе системный пользователь.
  */
 import React from 'react';
-import { User } from '../../types';
+import { User, Role } from '../../types';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { LogIn } from 'lucide-react';
 import { LOGIN_TITLE, LOGIN_SUBTITLE } from '../../constants';
 import { Logo } from '../Logo';
+
+const SYSTEM_USER: User = {
+  id: 'system',
+  name: 'Системный пользователь',
+  role: Role.ADMIN,
+  login: 'system',
+};
 
 interface LoginPageProps {
   users: User[];
@@ -17,8 +24,8 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
   const handleEnter = () => {
-    const user = users[0];
-    if (user) onLogin(user);
+    const user = users.length ? users[0] : SYSTEM_USER;
+    onLogin(user);
   };
 
   return (
@@ -39,7 +46,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ users, onLogin }) => {
           icon={LogIn}
           className="mt-6"
           onClick={handleEnter}
-          disabled={!users.length}
         >
           Вход
         </Button>
