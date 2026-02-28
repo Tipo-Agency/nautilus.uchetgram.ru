@@ -3,10 +3,10 @@ import React from 'react';
 import { 
   Task, User, Project, StatusOption, PriorityOption, ActivityLog, 
   Deal, Client, Contract, EmployeeInfo, Meeting, ContentPost, 
-  Doc, Folder, TableCollection,   Department, FinanceCategory, Fund,
-  FinancePlan, PurchaseRequest, FinancialPlanDocument, FinancialPlanning, OrgPosition, BusinessProcess, SalesFunnel,
+  Doc, Folder, TableCollection, Department, FinanceCategory, Fund,
+  FinancePlan, PurchaseRequest, FinancialPlanDocument, FinancialPlanning, BankStatement, IncomeReport, OrgPosition, BusinessProcess, SalesFunnel,
   ViewMode, AutomationRule, Warehouse, InventoryItem, StockBalance, StockMovement, InventoryRevision, OneTimeDeal, AccountsReceivable,
-  NotificationPreferences
+  NotificationPreferences, InboxMessage
 } from '../types';
 
 import HomeView from './HomeView';
@@ -22,13 +22,16 @@ import TableView from './TableView'; // Needed for Global Search
 import { TasksView } from './TasksView';
 import { SpacesTabsView } from './SpacesTabsView';
 import { SpaceModule } from './modules/SpaceModule';
+import { InDevelopmentOverlay } from './ui';
+
+/** Убрать плашку «В разработке» — см. InDevelopmentOverlay */
+const IN_DEV_CLIENTS = true;
+const IN_DEV_TASKS = true;
 import { CRMModule } from './modules/CRMModule';
 import { FinanceModule } from './modules/FinanceModule';
 import { HRModule } from './modules/HRModule';
 import { MeetingsModule } from './modules/MeetingsModule';
 import { DocumentsModule } from './modules/DocumentsModule';
-import { SitesView } from './sites/SitesView';
-import InventoryView from './InventoryView';
 
 interface AppRouterProps {
   currentView: string;
@@ -62,6 +65,8 @@ interface AppRouterProps {
   purchaseRequests: PurchaseRequest[];
   financialPlanDocuments?: FinancialPlanDocument[];
   financialPlannings?: FinancialPlanning[];
+  bankStatements?: BankStatement[];
+  incomeReports?: IncomeReport[];
   warehouses: Warehouse[];
   inventoryItems: InventoryItem[];
   inventoryBalances: StockBalance[];
@@ -74,6 +79,8 @@ interface AppRouterProps {
   settingsActiveTab?: string;
   activeSpaceTab?: 'content-plan' | 'backlog' | 'functionality';
   notificationPrefs?: NotificationPreferences;
+  inboxMessages?: InboxMessage[];
+  outboxMessages?: InboxMessage[];
   actions: any;
 }
 
@@ -109,6 +116,12 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
               projects={props.projects}
               statuses={props.statuses}
               priorities={props.priorities}
+              docs={props.docs}
+              departments={props.departments}
+              inboxMessages={props.inboxMessages}
+              outboxMessages={props.outboxMessages}
+              onSendMessage={actions.sendMessage}
+              onLoadMessages={actions.loadMessages}
               onOpenTask={actions.openTaskModal}
               onNavigateToInbox={() => actions.setCurrentView('inbox')}
               onQuickCreateTask={() => actions.openTaskModal(null)}
@@ -126,9 +139,17 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
                   window.dispatchEvent(event);
                 }, 100);
               }}
+              onQuickCreatePurchaseRequest={() => {
+                actions.setCurrentView('finance');
+                setTimeout(() => {
+                  const event = new CustomEvent('openCreatePurchaseRequestModal');
+                  window.dispatchEvent(event);
+                }, 100);
+              }}
               onNavigateToTasks={() => actions.setCurrentView('tasks')}
               onNavigateToMeetings={() => actions.setCurrentView('meetings')}
               onNavigateToDeals={() => actions.setCurrentView('sales-funnel')}
+              onNavigateToFinance={() => actions.setCurrentView('finance')}
               clients={props.clients}
               accountsReceivable={props.accountsReceivable}
           />
@@ -137,6 +158,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
 
   if (view === 'tasks') {
       return (
+          <InDevelopmentOverlay active={IN_DEV_TASKS}>
           <TasksPage
               tasks={props.allTasks}
               users={props.users}
@@ -151,6 +173,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
               onOpenTask={actions.openTaskModal}
               onCreateTask={() => actions.openTaskModal(null)}
           />
+          </InDevelopmentOverlay>
       );
   }
 
@@ -246,6 +269,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
 
   if (view === 'clients') {
       return (
+          <InDevelopmentOverlay active={IN_DEV_CLIENTS}>
           <ClientsPage
               clients={props.clients}
               contracts={props.contracts}
@@ -261,6 +285,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
               onSaveAccountsReceivable={actions.saveAccountsReceivable}
               onDeleteAccountsReceivable={actions.deleteAccountsReceivable}
           />
+          </InDevelopmentOverlay>
       );
   }
 
@@ -269,7 +294,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
   }
 
   if (view === 'finance') {
-      return <FinanceModule categories={props.financeCategories} funds={props.funds} plan={props.financePlan} requests={props.purchaseRequests} departments={props.departments} users={props.users} currentUser={props.currentUser} financialPlanDocuments={props.financialPlanDocuments} financialPlannings={props.financialPlannings} actions={actions} />;
+      return <FinanceModule categories={props.financeCategories} funds={props.funds} plan={props.financePlan} requests={props.purchaseRequests} departments={props.departments} users={props.users} currentUser={props.currentUser} financialPlanDocuments={props.financialPlanDocuments} financialPlannings={props.financialPlannings} bankStatements={props.bankStatements} incomeReports={props.incomeReports} actions={actions} />;
   }
 
   if (view === 'employees' || view === 'business-processes') {
@@ -305,7 +330,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
           // Добавляем в таблицы, но не сохраняем (чтобы не показывалась в настройках)
           // Модуль будет работать с этой фиктивной таблицей
       }
-      return <MeetingsModule table={meetingsTable} meetings={props.meetings} users={props.users} clients={props.clients} deals={props.deals} tables={props.tables} actions={actions} />;
+      return <MeetingsModule table={meetingsTable} meetings={props.meetings} users={props.users} clients={props.clients} deals={props.deals} tables={props.tables} currentUser={props.currentUser} actions={actions} />;
   }
 
   if (view === 'docs') {
@@ -326,32 +351,6 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
           // Модуль будет работать с этой фиктивной таблицей
       }
       return <DocumentsModule table={docsTable} docs={props.docs} folders={props.folders} tables={props.tables} tasks={props.allTasks} actions={actions} />;
-  }
-
-  if (view === 'sites') {
-      return <SitesView currentUser={props.currentUser} />;
-  }
-
-  if (view === 'inventory') {
-      return (
-          <InventoryView
-              departments={props.departments}
-              warehouses={props.warehouses}
-              items={props.inventoryItems}
-              balances={props.inventoryBalances}
-              movements={props.inventoryMovements}
-              revisions={props.inventoryRevisions || []}
-              currentUserId={props.currentUser?.id || ''}
-              onSaveWarehouse={actions.saveWarehouse}
-              onDeleteWarehouse={actions.deleteWarehouse}
-              onSaveItem={actions.saveInventoryItem}
-              onDeleteItem={actions.deleteInventoryItem}
-              onCreateMovement={actions.createInventoryMovement}
-              onCreateRevision={actions.createInventoryRevision}
-              onUpdateRevision={actions.updateInventoryRevision}
-              onPostRevision={actions.postInventoryRevision}
-          />
-      );
   }
 
   // Fallback: если ничего не подошло, показываем home

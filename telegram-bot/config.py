@@ -11,10 +11,8 @@ TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required! Set it in .env file or environment.")
 
-# Firebase конфигурация
-FIREBASE_PROJECT_ID = os.getenv('FIREBASE_PROJECT_ID', 'tipa-task-manager')
-FIREBASE_CREDENTIALS_PATH = os.getenv('FIREBASE_CREDENTIALS_PATH', '')
-FIREBASE_API_KEY = os.getenv('FIREBASE_API_KEY', '')
+# Backend API (обязательно)
+BACKEND_URL = os.getenv('BACKEND_URL', '')  # e.g. http://localhost:8000
 
 # Часовой пояс по умолчанию
 DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE', 'Asia/Tashkent')

@@ -9,6 +9,7 @@ interface MeetingsModuleProps {
   clients?: Client[];
   deals?: Deal[];
   tables: Table[];
+  currentUser?: User;
   actions: any;
 }
 
@@ -19,21 +20,23 @@ export const MeetingsModule: React.FC<MeetingsModuleProps> = ({
   clients = [],
   deals = [],
   tables,
+  currentUser,
   actions,
 }) => {
   return (
     <div className="h-full flex flex-col min-h-0 bg-white dark:bg-[#191919]">
-      <MeetingsView 
-        meetings={meetings} 
+      <MeetingsView
+        meetings={meetings}
         users={users}
         clients={clients}
         deals={deals}
-        tableId={table.id} 
-        showAll={table.isSystem} 
-        tables={tables} 
+        tableId={table.id}
+        showAll={table.isSystem}
+        tables={tables}
+        currentUser={currentUser}
         onSaveMeeting={actions.saveMeeting}
         onDeleteMeeting={actions.deleteMeeting}
-        onUpdateSummary={actions.updateMeetingSummary} 
+        onUpdateSummary={actions.updateMeetingSummary}
       />
     </div>
   );

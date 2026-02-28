@@ -37,8 +37,8 @@ export function runSeed(): void {
   localStoreService.setAll('tables', [
     { id: 't1', name: 'Задачи', type: 'tasks', icon: 'CheckSquare', color: 'text-blue-500' },
     { id: 't2', name: 'Контент-план', type: 'content-plan', icon: 'Instagram', color: 'text-pink-500' },
-    { id: 't3', name: 'Беклог', type: 'backlog', icon: 'Archive', color: 'text-amber-500' },
-    { id: 't4', name: 'Функционал', type: 'functionality', icon: 'Layers', color: 'text-green-600' },
+    { id: 't3', name: 'Идеи', type: 'backlog', icon: 'Archive', color: 'text-amber-500' },
+    { id: 't4', name: 'Проекты', type: 'functionality', icon: 'Layers', color: 'text-green-600' },
   ]);
 
   // Statuses, priorities
@@ -527,7 +527,7 @@ export function runSeed(): void {
     { id: 'case2', title: 'Реклама в Instagram для ИП Васильев', description: '<p>Настройка таргета и ведение профиля.</p>', clientName: 'ИП Васильев', tags: [], order: 2, published: true, createdAt: now() },
   ]);
   localStoreService.setAll('tags', [
-    { id: 'tag1', name: 'Разработка', color: '#267022', createdAt: now() },
+    { id: 'tag1', name: 'Разработка', color: '#382EA6', createdAt: now() },
     { id: 'tag2', name: 'Реклама', color: '#3b82f6', createdAt: now() },
     { id: 'tag3', name: 'Кейс', color: '#8b5cf6', createdAt: now() },
   ]);

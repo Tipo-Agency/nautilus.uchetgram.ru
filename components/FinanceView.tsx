@@ -1,9 +1,13 @@
 
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { TaskSelect } from './TaskSelect';
-import { FinanceCategory, Fund, FinancePlan, PurchaseRequest, Department, User, Role, FinancialPlanDocument, FinancialPlanning } from '../types';
-import { Wallet, Plus, X, Edit2, Trash2, PieChart, TrendingUp, DollarSign, Check, AlertCircle, Calendar, Settings, ArrowLeft, ArrowRight, Save, FileText, Clock, CheckCircle2, ChevronDown } from 'lucide-react';
-import { Tabs, Button, Card } from './ui';
+import { FinanceCategory, Fund, FinancePlan, PurchaseRequest, Department, User, Role, FinancialPlanDocument, FinancialPlanning, BankStatement, IncomeReport } from '../types';
+import { IncomeReportView } from './IncomeReportView';
+import { Wallet, Plus, X, Edit2, Trash2, PieChart, TrendingUp, DollarSign, Check, AlertCircle, Calendar, Settings, ArrowLeft, ArrowRight, Save, FileText, Clock, CheckCircle2, ChevronDown, Upload } from 'lucide-react';
+import { Tabs, Button, Card, InDevelopmentOverlay } from './ui';
+
+/** Убрать плашку «В разработке» — см. InDevelopmentOverlay */
+const IN_DEV_FINANCE_OTHERS = true;
 import { FilterConfig } from './FiltersPanel';
 import { Filter } from 'lucide-react';
 
@@ -23,15 +27,21 @@ interface FinanceViewProps {
   onDeleteFinancialPlanDocument?: (id: string) => void;
   onSaveFinancialPlanning?: (planning: FinancialPlanning) => void;
   onDeleteFinancialPlanning?: (id: string) => void;
+  bankStatements?: BankStatement[];
+  incomeReports?: IncomeReport[];
+  onSaveBankStatements?: (stmt: BankStatement) => void;
+  onSaveIncomeReports?: (report: IncomeReport) => void;
 }
 
 const FinanceView: React.FC<FinanceViewProps> = ({ 
     categories, funds = [], plan, requests, departments, users, currentUser,
     financialPlanDocuments = [], financialPlannings = [],
+    bankStatements = [], incomeReports = [],
     onSaveRequest, onDeleteRequest,
-    onSaveFinancialPlanDocument, onDeleteFinancialPlanDocument, onSaveFinancialPlanning, onDeleteFinancialPlanning
+    onSaveFinancialPlanDocument, onDeleteFinancialPlanDocument, onSaveFinancialPlanning, onDeleteFinancialPlanning,
+    onSaveBankStatements, onSaveIncomeReports,
 }) => {
-  const [activeTab, setActiveTab] = useState<'planning' | 'requests' | 'plan'>('planning');
+  const [activeTab, setActiveTab] = useState<'planning' | 'requests' | 'plan' | 'income-report'>('planning');
   
   // Состояния для детальных страниц
   const [selectedPlanning, setSelectedPlanning] = useState<FinancialPlanning | null>(null);
@@ -57,7 +67,16 @@ const FinanceView: React.FC<FinanceViewProps> = ({
   
   // Модалки
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target as Node)) setCreateDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   const [isPlanCreateModalOpen, setIsPlanCreateModalOpen] = useState(false);
   const [isPlanningCreateModalOpen, setIsPlanningCreateModalOpen] = useState(false);
   const [editingRequest, setEditingRequest] = useState<PurchaseRequest | null>(null);
@@ -155,8 +174,55 @@ const FinanceView: React.FC<FinanceViewProps> = ({
       setPlanDetailIncome(0);
       setPlanDetailExpenses({});
       setPlanDetailSelectedCategories([]);
+      setIsCategoryDropdownOpen(false);
     }
   }, [selectedPlanDoc]);
+
+  // Состояния для dropdown добавления статьи в детальной странице плана (хуки должны быть на верхнем уровне)
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+  const categoryDropdownRef = useRef<HTMLDivElement>(null);
+
+  const planDetailCalculatePercentAmount = useCallback((catId: string): number => {
+    const cat = categories.find(c => c.id === catId);
+    if (!cat || cat.type !== 'percent') return 0;
+    const percent = planDetailExpenses[catId] || 0;
+    return (planDetailIncome * percent) / 100;
+  }, [categories, planDetailExpenses, planDetailIncome]);
+
+  const totalPercentExpenses = useMemo(() => {
+    return planDetailSelectedCategories
+      .filter(catId => {
+        const cat = categories.find(c => c.id === catId);
+        return cat && cat.type === 'percent';
+      })
+      .reduce((sum, catId) => sum + planDetailCalculatePercentAmount(catId), 0);
+  }, [planDetailSelectedCategories, categories, planDetailCalculatePercentAmount]);
+
+  const totalExpenses = useMemo(() => {
+    const percentTotal = planDetailSelectedCategories
+      .filter(catId => {
+        const cat = categories.find(c => c.id === catId);
+        return cat && cat.type === 'percent';
+      })
+      .reduce((sum, catId) => sum + planDetailCalculatePercentAmount(catId), 0);
+    const fixedTotal = planDetailSelectedCategories
+      .filter(catId => {
+        const cat = categories.find(c => c.id === catId);
+        return cat && cat.type === 'fixed';
+      })
+      .reduce((sum, catId) => sum + (planDetailExpenses[catId] || 0), 0);
+    return percentTotal + fixedTotal;
+  }, [planDetailSelectedCategories, planDetailExpenses, categories, planDetailCalculatePercentAmount]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
+        setIsCategoryDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Фильтруем финансовые планирования
   const filteredPlannings = useMemo(() => {
@@ -339,11 +405,26 @@ const FinanceView: React.FC<FinanceViewProps> = ({
 
   // --- Handlers ---
 
-  const handleOpenRequestCreate = () => {
+  const handleOpenRequestCreate = useCallback(() => {
       setEditingRequest(null);
       setReqAmount(''); setReqDesc(''); setReqDep(departments[0]?.id || ''); setReqCat(categories[0]?.id || '');
       setIsRequestModalOpen(true);
-  };
+  }, [departments, categories]);
+
+  // Слушаем событие для открытия модалки заявки из HomePage (кнопка «Создать»)
+  useEffect(() => {
+    window.addEventListener('openCreatePurchaseRequestModal', handleOpenRequestCreate);
+    return () => window.removeEventListener('openCreatePurchaseRequestModal', handleOpenRequestCreate);
+  }, [handleOpenRequestCreate]);
+
+  // Открыть заявку для редактирования из ленты (Входящие/Исходящие)
+  useEffect(() => {
+    const handleEdit = (e: CustomEvent<{ request: PurchaseRequest }>) => {
+      if (e.detail?.request) handleOpenRequestEdit(e.detail.request);
+    };
+    window.addEventListener('openEditPurchaseRequestModal', handleEdit as EventListener);
+    return () => window.removeEventListener('openEditPurchaseRequestModal', handleEdit as EventListener);
+  }, []);
   
   const handleOpenRequestEdit = (req: PurchaseRequest) => {
       setEditingRequest(req);
@@ -893,40 +974,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({
       };
     };
     
-    const calculatePercentAmount = (catId: string): number => {
-      const cat = categories.find(c => c.id === catId);
-      if (!cat || cat.type !== 'percent') return 0;
-      const percent = planDetailExpenses[catId] || 0;
-      return (planDetailIncome * percent) / 100;
-    };
-    
-    // Вычисляем сумму процентных расходов
-    const totalPercentExpenses = useMemo(() => {
-      return planDetailSelectedCategories
-        .filter(catId => {
-          const cat = categories.find(c => c.id === catId);
-          return cat && cat.type === 'percent';
-        })
-        .reduce((sum, catId) => sum + calculatePercentAmount(catId), 0);
-    }, [planDetailSelectedCategories, planDetailExpenses, planDetailIncome, categories]);
-    
-    // Вычисляем остаток для фиксированных расходов
     const remainingForFixed = planDetailIncome - totalPercentExpenses;
-    
-    // Добавление статьи через дропдаун
-    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-    const categoryDropdownRef = useRef<HTMLDivElement>(null);
-    
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
-          setIsCategoryDropdownOpen(false);
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-    
     const availableCategories = categories.filter(cat => !planDetailSelectedCategories.includes(cat.id));
     
     const addCategory = (catId: string) => {
@@ -943,6 +991,8 @@ const FinanceView: React.FC<FinanceViewProps> = ({
       delete newExpenses[catId];
       setPlanDetailExpenses(newExpenses);
     };
+    
+    const calculatePercentAmount = planDetailCalculatePercentAmount;
     
     const handleApprove = () => {
       if (!onSaveFinancialPlanDocument || currentUser.role !== Role.ADMIN) return;
@@ -967,25 +1017,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({
       };
       onSaveFinancialPlanDocument(updated);
     };
-    
-    // Вычисляем общую сумму расходов (процентные + фиксированные)
-    const totalExpenses = useMemo(() => {
-      const percentTotal = planDetailSelectedCategories
-        .filter(catId => {
-          const cat = categories.find(c => c.id === catId);
-          return cat && cat.type === 'percent';
-        })
-        .reduce((sum, catId) => sum + calculatePercentAmount(catId), 0);
-      
-      const fixedTotal = planDetailSelectedCategories
-        .filter(catId => {
-          const cat = categories.find(c => c.id === catId);
-          return cat && cat.type === 'fixed';
-        })
-        .reduce((sum, catId) => sum + (planDetailExpenses[catId] || 0), 0);
-      
-      return percentTotal + fixedTotal;
-    }, [planDetailSelectedCategories, planDetailExpenses, planDetailIncome, categories]);
     
     const balance = planDetailIncome - totalExpenses;
     
@@ -1305,13 +1336,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({
   };
 
   // --- Create Modal Handlers ---
-  const handleCreateRequest = () => {
-    setIsCreateModalOpen(false);
-    handleOpenRequestCreate();
-  };
-
   const handleCreatePlan = () => {
-    setIsCreateModalOpen(false);
     if (departments.length === 0) {
       alert('Сначала создайте подразделение в настройках');
       return;
@@ -1366,7 +1391,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({
   };
 
   const handleCreatePlanning = () => {
-    setIsCreateModalOpen(false);
     if (departments.length === 0) {
       alert('Сначала создайте подразделение в настройках');
       return;
@@ -1489,16 +1513,69 @@ const FinanceView: React.FC<FinanceViewProps> = ({
                             )}
                         </button>
                     )}
-                    <Button
-                      onClick={() => setIsCreateModalOpen(true)}
-                      icon={Plus}
-                      iconPosition="left"
-                      size="md"
-                      className="shrink-0"
-                    >
-                      <span className="hidden sm:inline">Создать</span>
-                      <span className="sm:hidden">+</span>
-                    </Button>
+                    <div className="relative shrink-0" ref={createDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setCreateDropdownOpen(!createDropdownOpen)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#382EA6] hover:bg-[#2d2485] text-white font-medium transition-colors shadow-sm"
+                      >
+                        <Plus size={20} />
+                        <span>Создать</span>
+                        <ChevronDown size={16} className={createDropdownOpen ? 'rotate-180' : ''} />
+                      </button>
+                      {createDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 py-1 w-56 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl shadow-xl z-50">
+                          <button
+                            type="button"
+                            onClick={() => { handleOpenRequestCreate(); setCreateDropdownOpen(false); }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
+                          >
+                            <Wallet size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
+                            Заявка на приобретение
+                          </button>
+                          {currentUser.role === Role.ADMIN && (
+                            <button
+                              type="button"
+                              onClick={() => { handleCreatePlan(); setCreateDropdownOpen(false); }}
+                              className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
+                            >
+                              <FileText size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
+                              Финансовый план
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { handleCreatePlanning(); setCreateDropdownOpen(false); }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
+                          >
+                            <FileText size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
+                            Финансовое планирование
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('incomeReportUploadExcel'));
+                              setCreateDropdownOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
+                          >
+                            <Upload size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
+                            Загрузить выписку (Excel)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('incomeReportCreateReport'));
+                              setCreateDropdownOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
+                          >
+                            <FileText size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
+                            Сформировать справку
+                          </button>
+                        </div>
+                      )}
+                    </div>
                 </div>
             </div>
             
@@ -1508,6 +1585,7 @@ const FinanceView: React.FC<FinanceViewProps> = ({
                     tabs={[
                         { id: 'planning', label: 'Планирование' },
                         { id: 'requests', label: 'Заявки' },
+                        { id: 'income-report', label: 'Справка о доходах' },
                         ...(currentUser.role === Role.ADMIN ? [{ id: 'plan', label: 'Финансовый план' }] : [])
                     ]}
                     activeTab={activeTab}
@@ -1518,6 +1596,10 @@ const FinanceView: React.FC<FinanceViewProps> = ({
                         } else if (tabId === 'plan') {
                             setSelectedPlanDoc(null);
                             setActiveTab('plan');
+                        } else if (tabId === 'income-report') {
+                            setSelectedPlanning(null);
+                            setSelectedPlanDoc(null);
+                            setActiveTab('income-report');
                         } else {
                             setSelectedPlanning(null);
                             setSelectedPlanDoc(null);
@@ -1588,11 +1670,31 @@ const FinanceView: React.FC<FinanceViewProps> = ({
        <div className="flex-1 min-h-0 overflow-hidden">
          <div className="max-w-7xl mx-auto w-full px-6 pb-20 h-full overflow-y-auto custom-scrollbar">
            {activeTab === 'planning' && (
-             selectedPlanning ? renderPlanningDetail() : renderPlanningList()
+             <InDevelopmentOverlay active={IN_DEV_FINANCE_OTHERS}>
+               {selectedPlanning ? renderPlanningDetail() : renderPlanningList()}
+             </InDevelopmentOverlay>
            )}
-           {activeTab === 'requests' && renderRequestsTab()}
+           {activeTab === 'requests' && (
+             <InDevelopmentOverlay active={IN_DEV_FINANCE_OTHERS}>
+               {renderRequestsTab()}
+             </InDevelopmentOverlay>
+           )}
+           {activeTab === 'income-report' && onSaveBankStatements && onSaveIncomeReports && (
+             <IncomeReportView
+               bankStatements={bankStatements}
+               incomeReports={incomeReports}
+               currentUser={currentUser}
+               departments={departments}
+               financialPlannings={financialPlannings}
+               onSaveBankStatements={onSaveBankStatements}
+               onSaveIncomeReports={onSaveIncomeReports}
+               onSaveFinancialPlanning={(p) => onSaveFinancialPlanning?.(p as FinancialPlanning)}
+             />
+           )}
            {activeTab === 'plan' && (
-             selectedPlanDoc ? renderPlanDetail() : renderPlanList()
+             <InDevelopmentOverlay active={IN_DEV_FINANCE_OTHERS}>
+               {selectedPlanDoc ? renderPlanDetail() : renderPlanList()}
+             </InDevelopmentOverlay>
            )}
          </div>
        </div>
@@ -1653,40 +1755,6 @@ const FinanceView: React.FC<FinanceViewProps> = ({
         </div>
        )}
        
-       {/* Create Modal - стандартное оформление */}
-       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end md:items-center justify-center z-[80] animate-in fade-in duration-200" onClick={() => setIsCreateModalOpen(false)}>
-            <div className="bg-white dark:bg-[#252525] rounded-t-2xl md:rounded-xl shadow-2xl w-full max-w-md max-h-[95vh] md:max-h-[90vh] overflow-hidden border border-gray-200 dark:border-[#333]" onClick={e => e.stopPropagation()}>
-                <div className="p-4 border-b border-gray-100 dark:border-[#333] flex justify-between items-center bg-white dark:bg-[#252525]">
-                    <h3 className="font-bold text-gray-800 dark:text-white">Создать</h3>
-                    <button onClick={() => setIsCreateModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#333]"><X size={18} /></button>
-                </div>
-                <div className="p-6 space-y-3">
-                    <button 
-                        onClick={handleCreateRequest}
-                        className="w-full p-4 bg-white dark:bg-[#333] border border-gray-200 dark:border-[#444] rounded-lg text-left hover:bg-gray-50 dark:hover:bg-[#404040] transition-colors"
-                    >
-                        <div className="font-semibold text-gray-800 dark:text-white mb-1">Заявка на приобретение</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Создать новую заявку на приобретение</div>
-                    </button>
-                    <button 
-                        onClick={handleCreatePlan}
-                        className="w-full p-4 bg-white dark:bg-[#333] border border-gray-200 dark:border-[#444] rounded-lg text-left hover:bg-gray-50 dark:hover:bg-[#404040] transition-colors"
-                    >
-                        <div className="font-semibold text-gray-800 dark:text-white mb-1">Финансовый план</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Создать финансовый план на месяц</div>
-                    </button>
-                    <button 
-                        onClick={handleCreatePlanning}
-                        className="w-full p-4 bg-white dark:bg-[#333] border border-gray-200 dark:border-[#444] rounded-lg text-left hover:bg-gray-50 dark:hover:bg-[#404040] transition-colors"
-                    >
-                        <div className="font-semibold text-gray-800 dark:text-white mb-1">Финансовое планирование</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">Создать планирование за период для подразделения</div>
-                    </button>
-                </div>
-            </div>
-        </div>
-       )}
 
        {/* Plan Create Modal */}
        {isPlanCreateModalOpen && (

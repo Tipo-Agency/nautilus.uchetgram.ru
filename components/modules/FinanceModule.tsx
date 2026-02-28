@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FinanceCategory, Fund, FinancePlan, PurchaseRequest, Department, User, FinancialPlanDocument, FinancialPlanning } from '../../types';
+import { FinanceCategory, Fund, FinancePlan, PurchaseRequest, Department, User, FinancialPlanDocument, FinancialPlanning, BankStatement, IncomeReport } from '../../types';
 import FinanceView from '../FinanceView';
 
 interface FinanceModuleProps {
@@ -13,10 +13,12 @@ interface FinanceModuleProps {
   currentUser: User;
   financialPlanDocuments?: FinancialPlanDocument[];
   financialPlannings?: FinancialPlanning[];
+  bankStatements?: BankStatement[];
+  incomeReports?: IncomeReport[];
   actions: any;
 }
 
-export const FinanceModule: React.FC<FinanceModuleProps> = ({ categories, funds = [], plan, requests, departments, users, currentUser, financialPlanDocuments = [], financialPlannings = [], actions }) => {
+export const FinanceModule: React.FC<FinanceModuleProps> = ({ categories, funds = [], plan, requests, departments, users, currentUser, financialPlanDocuments = [], financialPlannings = [], bankStatements = [], incomeReports = [], actions }) => {
     return (
         <FinanceView 
             categories={categories}
@@ -28,12 +30,16 @@ export const FinanceModule: React.FC<FinanceModuleProps> = ({ categories, funds 
             currentUser={currentUser}
             financialPlanDocuments={financialPlanDocuments}
             financialPlannings={financialPlannings}
+            bankStatements={bankStatements}
+            incomeReports={incomeReports}
             onSaveRequest={actions.savePurchaseRequest} 
             onDeleteRequest={actions.deletePurchaseRequest}
             onSaveFinancialPlanDocument={actions.saveFinancialPlanDocument}
             onDeleteFinancialPlanDocument={actions.deleteFinancialPlanDocument}
             onSaveFinancialPlanning={actions.saveFinancialPlanning}
             onDeleteFinancialPlanning={actions.deleteFinancialPlanning}
+            onSaveBankStatements={actions.saveBankStatements}
+            onSaveIncomeReports={actions.saveIncomeReports}
         />
     );
 };

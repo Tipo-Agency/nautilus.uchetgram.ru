@@ -122,8 +122,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           onMobileMenuToggle={onMobileMenuToggle}
         />
 
-        {/* Main Content */}
-        <div className="flex-1 min-h-0 overflow-hidden h-full">{children}</div>
+        {/* Main Content — flex + min-h-0 для корректного скролла до конца */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">{children}</div>
       </div>
     </SafeAreaAll>
   );

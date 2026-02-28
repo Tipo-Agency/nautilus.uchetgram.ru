@@ -118,8 +118,8 @@ export const SpacesTabsView: React.FC<SpacesTabsViewProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-        <div className="max-w-7xl mx-auto w-full px-6 py-6">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-0">
+        <div className="max-w-7xl mx-auto w-full px-6 py-6 pb-24 md:pb-32">
           {currentSpaces.length === 0 ? (
             <div className="text-center py-20">
               <div className="text-gray-400 dark:text-gray-500 mb-4 inline-block">

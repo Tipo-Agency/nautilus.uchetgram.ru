@@ -15,7 +15,7 @@ import {
   NotificationContext 
 } from '../../services/notificationService';
 import { leadSyncService } from '../../services/leadSyncService';
-import { Comment, Deal, Task, BusinessProcess, Client, Contract, PurchaseRequest, Doc, Meeting, SalesFunnel } from '../../types';
+import { Comment, Deal, Task, BusinessProcess, Client, Contract, PurchaseRequest, Doc, Meeting, SalesFunnel, InboxMessage, MessageAttachment } from '../../types';
 import { createDeleteHandler } from '../../utils/crudUtils';
 
 import { useAuthLogic } from './slices/useAuthLogic';
@@ -42,6 +42,8 @@ export const useAppLogic = () => {
   const authSlice = useAuthLogic(showNotification);
   const crmSlice = useCRMLogic(showNotification);
   const [salesFunnels, setSalesFunnels] = useState<SalesFunnel[]>([]);
+  const [inboxMessages, setInboxMessages] = useState<InboxMessage[]>([]);
+  const [outboxMessages, setOutboxMessages] = useState<InboxMessage[]>([]);
   const contentSlice = useContentLogic(showNotification, settingsSlice.state.activeTableId);
   const taskSlice = useTaskLogic(showNotification, authSlice.state.currentUser, authSlice.state.users, settingsSlice.state.automationRules, contentSlice.state.docs, contentSlice.actions.saveDoc, settingsSlice.state.notificationPrefs);
   const financeSlice = useFinanceLogic(showNotification);
@@ -146,10 +148,26 @@ export const useAppLogic = () => {
       setLoadedModules(new Set(loadedModulesRef.current));
   };
 
+  // Загрузка сообщений входящие/исходящие (для главной)
+  const loadMessages = async () => {
+    const uid = authSlice.state.currentUser?.id;
+    if (!uid) return;
+    try {
+      const [inbox, outbox] = await Promise.all([
+        api.messages.getInbox(uid),
+        api.messages.getOutbox(uid),
+      ]);
+      setInboxMessages((inbox || []) as InboxMessage[]);
+      setOutboxMessages((outbox || []) as InboxMessage[]);
+    } catch (e) {
+      console.warn('[Messages] load failed', e);
+    }
+  };
+
   // Уровень 2: Загрузка данных модуля Finance (lazy loading)
   const loadFinanceData = async () => {
       if (loadedModulesRef.current.has('finance')) return; // Уже загружено
-      const [departments, categories, funds, plan, requests, planDocs, plannings] = await Promise.all([
+      const [departments, categories, funds, plan, requests, planDocs, plannings, bankStatements, incomeReports] = await Promise.all([
           api.departments.getAll(),
           api.finance.getCategories(),
           api.finance.getFunds(),
@@ -157,6 +175,8 @@ export const useAppLogic = () => {
           api.finance.getRequests(),
           api.finance.getFinancialPlanDocuments(),
           api.finance.getFinancialPlannings(),
+          api.finance.getBankStatements().catch(() => []),
+          api.finance.getIncomeReports().catch(() => []),
       ]);
       financeSlice.setters.setDepartments(departments);
       financeSlice.setters.setFinanceCategories(categories);
@@ -165,6 +185,8 @@ export const useAppLogic = () => {
       financeSlice.setters.setPurchaseRequests(requests);
       financeSlice.setters.setFinancialPlanDocuments(planDocs);
       financeSlice.setters.setFinancialPlannings(plannings);
+      financeSlice.setters.setBankStatements(bankStatements);
+      financeSlice.setters.setIncomeReports(incomeReports);
       loadedModulesRef.current.add('finance');
       setLoadedModules(new Set(loadedModulesRef.current));
   };
@@ -297,13 +319,14 @@ export const useAppLogic = () => {
     const loadData = async () => {
       switch (currentView) {
           case 'home':
-              // Home использует данные из нескольких модулей
+              // Home использует данные из нескольких модулей + сообщения входящие/исходящие
               await Promise.all([
                   loadTasksData(),
                   loadContentData(), // для meetings и contentPosts
                   loadFinanceData(), // для financePlan и purchaseRequests
                   loadCRMData(), // для deals и employeeInfos
               ]);
+              await loadMessages();
               break;
           case 'tasks':
           case 'search':
@@ -638,10 +661,11 @@ export const useAppLogic = () => {
       tasks: taskSlice.state.tasks, projects: taskSlice.state.projects, statuses: taskSlice.state.statuses, priorities: taskSlice.state.priorities, isTaskModalOpen: taskSlice.state.isTaskModalOpen, editingTask: taskSlice.state.editingTask,
       clients: crmSlice.state.clients, contracts: crmSlice.state.contracts, oneTimeDeals: crmSlice.state.oneTimeDeals, accountsReceivable: crmSlice.state.accountsReceivable, employeeInfos: crmSlice.state.employeeInfos, deals: crmSlice.state.deals,
       docs: contentSlice.state.docs, folders: contentSlice.state.folders, meetings: contentSlice.state.meetings, contentPosts: contentSlice.state.contentPosts, isDocModalOpen: contentSlice.state.isDocModalOpen, activeDocId: contentSlice.state.activeDocId, targetFolderId: contentSlice.state.targetFolderId, editingDoc: contentSlice.state.editingDoc,
-      departments: financeSlice.state.departments, financeCategories: financeSlice.state.financeCategories, funds: financeSlice.state.funds, financePlan: financeSlice.state.financePlan, purchaseRequests: financeSlice.state.purchaseRequests, financialPlanDocuments: financeSlice.state.financialPlanDocuments, financialPlannings: financeSlice.state.financialPlannings,
+      departments: financeSlice.state.departments, financeCategories: financeSlice.state.financeCategories, funds: financeSlice.state.funds, financePlan: financeSlice.state.financePlan, purchaseRequests: financeSlice.state.purchaseRequests, financialPlanDocuments: financeSlice.state.financialPlanDocuments, financialPlannings: financeSlice.state.financialPlannings, bankStatements: financeSlice.state.bankStatements, incomeReports: financeSlice.state.incomeReports,
       orgPositions: bpmSlice.state.orgPositions, businessProcesses: bpmSlice.state.businessProcesses,
       warehouses: inventorySlice.state.warehouses, inventoryItems: inventorySlice.state.items, inventoryMovements: inventorySlice.state.movements, inventoryBalances: inventorySlice.state.balances, inventoryRevisions: inventorySlice.state.revisions,
       salesFunnels: salesFunnels,
+      inboxMessages, outboxMessages,
       darkMode: settingsSlice.state.darkMode, tables: settingsSlice.state.tables, activityLogs: settingsSlice.state.activityLogs, currentView: settingsSlice.state.currentView, activeTableId: settingsSlice.state.activeTableId, viewMode: settingsSlice.state.viewMode, searchQuery: settingsSlice.state.searchQuery, settingsActiveTab: settingsSlice.state.settingsActiveTab, isCreateTableModalOpen: settingsSlice.state.isCreateTableModalOpen, createTableType: settingsSlice.state.createTableType, isEditTableModalOpen: settingsSlice.state.isEditTableModalOpen, editingTable: settingsSlice.state.editingTable, notificationPrefs: settingsSlice.state.notificationPrefs, automationRules: settingsSlice.state.automationRules, activeSpaceTab: settingsSlice.state.activeSpaceTab,
       activeTable: settingsSlice.state.tables.find(t => t.id === settingsSlice.state.activeTableId), activeDoc: contentSlice.state.docs.find(d => d.id === contentSlice.state.activeDocId)
     },
@@ -746,7 +770,7 @@ export const useAppLogic = () => {
           ).catch(() => {});
         }
       },
-      deletePurchaseRequest: financeSlice.actions.deletePurchaseRequest, saveFinancialPlanDocument: financeSlice.actions.saveFinancialPlanDocument, deleteFinancialPlanDocument: financeSlice.actions.deleteFinancialPlanDocument, saveFinancialPlanning: financeSlice.actions.saveFinancialPlanning, deleteFinancialPlanning: financeSlice.actions.deleteFinancialPlanning,
+      deletePurchaseRequest: financeSlice.actions.deletePurchaseRequest, saveFinancialPlanDocument: financeSlice.actions.saveFinancialPlanDocument, deleteFinancialPlanDocument: financeSlice.actions.deleteFinancialPlanDocument, saveFinancialPlanning: financeSlice.actions.saveFinancialPlanning, deleteFinancialPlanning: financeSlice.actions.deleteFinancialPlanning, saveBankStatements: financeSlice.actions.saveBankStatements, saveIncomeReports: financeSlice.actions.saveIncomeReports,
       saveWarehouse: inventorySlice.actions.saveWarehouse, deleteWarehouse: inventorySlice.actions.deleteWarehouse, saveInventoryItem: inventorySlice.actions.saveItem, deleteInventoryItem: inventorySlice.actions.deleteItem, createInventoryMovement: inventorySlice.actions.createMovement, createInventoryRevision: inventorySlice.actions.createRevision, updateInventoryRevision: inventorySlice.actions.updateRevision, postInventoryRevision: inventorySlice.actions.postRevision,
       savePosition: bpmSlice.actions.savePosition, deletePosition: bpmSlice.actions.deletePosition, saveProcess: bpmSlice.actions.saveProcess, deleteProcess: bpmSlice.actions.deleteProcess, completeProcessStepWithBranch,
       saveSalesFunnel: async (funnel: SalesFunnel) => {
@@ -998,7 +1022,24 @@ export const useAppLogic = () => {
       },
       toggleDarkMode: settingsSlice.actions.toggleDarkMode, createTable: createTableWrapper, updateTable: settingsSlice.actions.updateTable, deleteTable: settingsSlice.actions.deleteTable, markAllRead: settingsSlice.actions.markAllRead, navigate: settingsSlice.actions.navigate, openSettings: settingsSlice.actions.openSettings, closeSettings: settingsSlice.actions.closeSettings, openCreateTable: settingsSlice.actions.openCreateTable, closeCreateTable: settingsSlice.actions.closeCreateTable, openEditTable: settingsSlice.actions.openEditTable, closeEditTable: settingsSlice.actions.closeEditTable, updateNotificationPrefs: settingsSlice.actions.updateNotificationPrefs, saveAutomationRule: settingsSlice.actions.saveAutomationRule, deleteAutomationRule: settingsSlice.actions.deleteAutomationRule, setActiveSpaceTab: settingsSlice.actions.setActiveSpaceTab,
       setActiveTableId: settingsSlice.setters.setActiveTableId, setCurrentView: settingsSlice.setters.setCurrentView, setViewMode: settingsSlice.setters.setViewMode, setSearchQuery: settingsSlice.setters.setSearchQuery,
-      // Функция fillMockData полностью удалена
+      loadMessages,
+      sendMessage: async (payload: { text: string; attachments?: MessageAttachment[]; recipientId?: string | null }) => {
+        const uid = authSlice.state.currentUser?.id;
+        if (!uid) return;
+        try {
+          await api.messages.add({
+            senderId: uid,
+            recipientId: payload.recipientId ?? null,
+            text: payload.text,
+            attachments: payload.attachments || [],
+          });
+          await loadMessages();
+          showNotification('Сообщение отправлено');
+        } catch (e) {
+          console.error(e);
+          showNotification('Ошибка отправки');
+        }
+      },
     }
   };
 };

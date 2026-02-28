@@ -1,4 +1,6 @@
 export { HomeHeader } from './HomeHeader';
+export { FeedEntityCard } from './FeedEntityCard';
+export type { FeedItem, FeedItemType } from './FeedEntityCard';
 export { QuickActions } from './QuickActions';
 export { CreateEntityButton } from './CreateEntityButton';
 export { MyTasksSection } from './MyTasksSection';

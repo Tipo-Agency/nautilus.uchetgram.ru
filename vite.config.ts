@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: 'localhost',
+        proxy: {
+          '/api': { target: 'http://localhost:8000', changeOrigin: true },
+          '/health': { target: 'http://localhost:8000', changeOrigin: true },
+        },
         hmr: {
           overlay: false, // Отключаем overlay для более быстрой работы
           clientPort: 3000,

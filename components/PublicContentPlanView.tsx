@@ -15,7 +15,7 @@ const PublicContentPlanView: React.FC<PublicContentPlanViewProps> = ({ tableId }
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    // Загружаем данные напрямую из Firebase
+    // Загружаем данные из backend API
     const loadData = async () => {
       try {
         setLoading(true);

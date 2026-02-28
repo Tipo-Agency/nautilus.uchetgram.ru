@@ -3,7 +3,7 @@ import { Department, Warehouse, InventoryItem, StockBalance, StockMovement, Inve
 import { Layers, Plus } from 'lucide-react';
 import { Button } from './ui/Button';
 
-const PRIMARY_COLOR = '#267022';
+import { PRIMARY_COLOR } from '../constants';
 
 interface InventoryViewProps {
   departments: Department[];

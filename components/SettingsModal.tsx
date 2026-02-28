@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Project, Role, Task, User, StatusOption, PriorityOption, NotificationPreferences, AutomationRule, TableCollection, Deal } from '../types';
 import { Trash2, Plus, User as UserIcon, Briefcase, Bot, Save, Archive, KeyRound, List, BarChart2, Pencil, CheckSquare, FileText, Users, Zap, Layout, Bell, Play, Mail, Phone, Camera, Send, Link, Server, AtSign, MessageSquare, Instagram, Layers } from 'lucide-react';
 import { storageService } from '../services/storageService';
-import { LABEL_COLORS, PRIORITY_COLORS, ICON_OPTIONS, COLOR_OPTIONS, DEFAULT_NOTIFICATION_PREFS, FIREBASE_DB_URL } from '../constants';
+import { LABEL_COLORS, PRIORITY_COLORS, ICON_OPTIONS, COLOR_OPTIONS, DEFAULT_NOTIFICATION_PREFS } from '../constants';
 import { DynamicIcon } from './AppIcons';
 
 interface SettingsModalProps {

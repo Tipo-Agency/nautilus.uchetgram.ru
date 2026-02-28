@@ -145,21 +145,22 @@ export interface SalesFunnel {
 export interface Deal {
   id: string;
   title: string;
-  clientId?: string; 
-  contactName?: string; 
+  clientId?: string;
+  contactName?: string;
   amount: number;
-  currency: string; 
-  stage: string; // ID этапа из воронки (больше не фиксированный тип)
-  funnelId?: string; // ID воронки, к которой относится сделка
-  source?: 'instagram' | 'telegram' | 'site' | 'manual' | 'recommendation' | 'vk'; // Lead Source
-  telegramChatId?: string; // For chatting with lead
+  currency: string;
+  stage: string;
+  funnelId?: string;
+  source?: 'instagram' | 'telegram' | 'site' | 'manual' | 'recommendation' | 'vk';
+  telegramChatId?: string;
   telegramUsername?: string;
   assigneeId: string;
   createdAt: string;
-  notes?: string; // Комментарии к сделке
-  projectId?: string; // Вид услуг (модуль/проект)
+  notes?: string;
+  projectId?: string;
   comments?: Comment[];
-  isArchived?: boolean; // Архив
+  isArchived?: boolean;
+  createdByUserId?: string; // Кто создал/поставил сделку (null/undefined = системная)
 }
 
 export interface Department {
@@ -347,10 +348,9 @@ export interface Task {
   source?: string; // 'Задача', 'Беклог', 'Функционал', или название контент-плана
   category?: string; // Категория функции (ID из functionalityCategories)
   taskId?: string; // ID связанной задачи (для функций)
-  createdByUserId?: string; // ID автора (для идей)
-  createdAt?: string; // ISO дата создания
-  // Поля для purchase_request:
-  requesterId?: string; // ID пользователя (для заявок)
+  createdByUserId?: string; // Кто поставил задачу (null = системная / авто)
+  createdAt?: string;
+  requesterId?: string;
   departmentId?: string; // ID отдела (для заявок)
   categoryId?: string; // ID категории финансов (для заявок)
   amount?: number; // Сумма (для заявок)
@@ -368,8 +368,9 @@ export interface Meeting {
   type: 'client' | 'work'; // Тип встречи: с клиентом или рабочая (планерка)
   dealId?: string; // ID сделки (обязательно для встреч с клиентами)
   clientId?: string; // ID клиента (необязательно, берется из сделки)
-  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly'; // Повторение (только для рабочих встреч)
-  isArchived?: boolean; // Архив
+  recurrence?: 'none' | 'daily' | 'weekly' | 'monthly';
+  isArchived?: boolean;
+  createdByUserId?: string; // Кто создал встречу (null = системная)
 }
 
 export interface ContentPost {
@@ -424,6 +425,24 @@ export interface ActivityLog {
   action: string;
   details: string;
   timestamp: string;
+  read: boolean;
+}
+
+/** Вложение к сообщению — ссылка на сущность системы */
+export interface MessageAttachment {
+  entityType: 'task' | 'deal' | 'client' | 'doc' | 'meeting' | 'content' | 'project' | 'table';
+  entityId: string;
+  label?: string;
+}
+
+/** Сообщение в ленте входящих/исходящих */
+export interface InboxMessage {
+  id: string;
+  senderId: string;
+  recipientId: string | null;
+  text: string;
+  attachments: MessageAttachment[];
+  createdAt: string;
   read: boolean;
 }
 
@@ -528,6 +547,67 @@ export interface Fund {
     name: string;
     order?: number;
     isArchived?: boolean;
+}
+
+/** Выписка из банка (заголовок) */
+export interface BankStatement {
+  id: string;
+  name: string;
+  bankName?: string;
+  accountNumber?: string;
+  departmentId?: string; // Подразделение
+  periodFrom: string; // YYYY-MM-DD
+  periodTo: string;
+  uploadedAt: string; // ISO
+  uploadedByUserId: string;
+  totalIncome: number;
+  totalOutcome?: number;
+  isArchived?: boolean;
+  /** Строки выписки (при сохранении/получении) */
+  lines?: BankStatementLine[];
+}
+
+/** Строка выписки (одна операция) */
+export interface BankStatementLine {
+  id: string;
+  statementId: string;
+  date: string; // YYYY-MM-DD
+  amount: number; // положительная — приход, отрицательная — расход
+  description?: string;
+  counterparty?: string;
+  documentNumber?: string;
+  type: 'income' | 'outcome';
+}
+
+/** Поступление из 1С */
+export interface IncomeFrom1C {
+  id: string;
+  periodFrom: string;
+  periodTo: string;
+  date: string;
+  amount: number;
+  description?: string;
+  documentRef?: string;
+  departmentId?: string;
+  syncedAt: string; // ISO
+  isArchived?: boolean;
+}
+
+/** Справка о доходах за период */
+export interface IncomeReport {
+  id: string;
+  period: string; // YYYY-MM или диапазон
+  periodFrom: string; // YYYY-MM-DD
+  periodTo: string;
+  amount: number;
+  departmentId?: string; // Подразделение
+  source: 'bank_statements' | 'manual' | 'mixed';
+  statementIds?: string[];
+  manualAmount?: number;
+  note?: string;
+  createdAt: string; // ISO
+  createdByUserId: string;
+  isArchived?: boolean;
 }
 
 // Финансовое планирование: доход (кассовый метод) → распределение по фондам → заявки по фондам

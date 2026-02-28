@@ -89,13 +89,13 @@ const ContentPlanView: React.FC<ContentPlanViewProps> = ({
       if (!date) setDate(new Date().toISOString().split('T')[0]);
   }, []);
 
-  // Обновление данных из Firebase (вместо старой синхронизации)
+  // Обновление данных из backend API
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshData = async () => {
       if (isRefreshing) return; // Предотвращаем параллельные обновления
       setIsRefreshing(true);
       try {
-          // Данные загружаются напрямую из Firebase через api.*.getAll()
+          // Данные загружаются из backend API через api.*.getAll()
           // Отправляем событие для обновления данных в родительском компоненте
           window.dispatchEvent(new CustomEvent('contentPlanSync'));
       } catch (error) {

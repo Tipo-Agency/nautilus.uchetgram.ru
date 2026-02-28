@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { TableCollection, Task, User, Project, StatusOption, PriorityOption, Doc, Folder, Meeting, ContentPost, ViewMode, BusinessProcess, Client } from '../../types';
+import { TableCollection, Task, User, Project, StatusOption, PriorityOption, Doc, Folder, Meeting, ContentPost, ViewMode, BusinessProcess, Client, Deal } from '../../types';
 import TableView from '../TableView';
 import KanbanBoard from '../KanbanBoard';
 import GanttView from '../GanttView';
@@ -220,8 +220,8 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                    <div className="max-w-7xl mx-auto w-full px-3 md:px-6 pb-20">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar min-h-0">
+                    <div className="max-w-7xl mx-auto w-full px-3 md:px-6 pb-24 md:pb-32">
                     {viewMode === ViewMode.TABLE && (
                         <TableView 
                             tasks={filteredTasks} 
@@ -290,7 +290,8 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
         };
 
         return (
-            <div className="px-6 h-full flex flex-col min-h-0">
+            <div className="h-full flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-24 md:pb-32">
                 <BacklogView 
                     backlogTasks={backlogTasks}
                     users={users}
@@ -317,6 +318,7 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
                     }}
                     onTakeToWork={handleTakeToWork}
                 />
+                </div>
             </div>
         );
     
@@ -348,7 +350,8 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
         };
 
         return (
-            <div className="px-6 h-full flex flex-col min-h-0">
+            <div className="h-full flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-24 md:pb-32">
                 <FunctionalityView 
                     features={allFunctionalityTasks} 
                     users={users} 
@@ -388,34 +391,41 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
                     }}
                     onTakeToWork={handleTakeFeatureToWork}
                 />
+                </div>
             </div>
         );
 
     case 'meetings':
         return (
-            <div className="px-6 h-full flex flex-col min-h-0">
-                <MeetingsView 
-                    meetings={meetings} users={users} clients={clients} deals={deals} tableId={activeTable.id} showAll={activeTable.isSystem} tables={tables} 
-                    onSaveMeeting={actions.saveMeeting} onDeleteMeeting={actions.deleteMeeting} onUpdateSummary={actions.updateMeetingSummary} 
+            <div className="h-full flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-24 md:pb-32">
+                <MeetingsView
+                    meetings={meetings} users={users} clients={clients} deals={deals} tableId={activeTable.id} showAll={activeTable.isSystem} tables={tables}
+                    currentUser={currentUser}
+                    onSaveMeeting={actions.saveMeeting} onDeleteMeeting={actions.deleteMeeting} onUpdateSummary={actions.updateMeetingSummary}
                 />
+                </div>
             </div>
         );
 
     case 'content-plan':
         return (
-            <div className="px-6 h-full flex flex-col min-h-0">
+            <div className="h-full flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-24 md:pb-32">
                 <ContentPlanView 
                     posts={contentPosts} tableId={activeTable.id} tasks={tasks} 
                     activeTable={activeTable}
                     onSavePost={actions.savePost} onDeletePost={actions.deletePost} 
                     onOpenTask={actions.openTaskModal} onCreateTask={actions.openTaskModal} 
                 />
+                </div>
             </div>
         );
 
     case 'docs':
         return (
-            <div className="px-6 h-full flex flex-col min-h-0">
+            <div className="h-full flex flex-col min-h-0">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 pb-24 md:pb-32">
                 <DocumentsView 
                     docs={docs} folders={folders} tableId={activeTable.id} showAll={activeTable.isSystem} tables={tables} 
                     tasks={tasks}
@@ -432,6 +442,7 @@ export const SpaceModule: React.FC<SpaceModuleProps> = ({
                         }
                     }}
                 />
+                </div>
             </div>
         );
 

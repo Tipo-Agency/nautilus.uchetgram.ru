@@ -103,6 +103,15 @@ const SalesFunnelView: React.FC<SalesFunnelViewProps> = ({ deals, clients, users
     return () => window.removeEventListener('openCreateDealModal', handleOpenModal);
   }, []);
 
+  // Открыть сделку для редактирования из ленты (Входящие/Исходящие)
+  useEffect(() => {
+    const handleEdit = (e: CustomEvent<{ deal: Deal }>) => {
+      if (e.detail?.deal) handleOpenEdit(e.detail.deal);
+    };
+    window.addEventListener('openEditDealModal', handleEdit as EventListener);
+    return () => window.removeEventListener('openEditDealModal', handleEdit as EventListener);
+  }, []);
+
   const handleOpenCreate = () => { 
     setEditingDeal(null); 
     setTitle(''); 
@@ -180,21 +189,22 @@ const SalesFunnelView: React.FC<SalesFunnelViewProps> = ({ deals, clients, users
           
           const dealData: Deal = {
               id: editingDeal ? editingDeal.id : `deal-${Date.now()}`,
-              title: trimmedTitle, 
-              clientId: undefined, // Клиент создается только при успешной сделке
-              contactName: contactName.trim() || undefined, 
-              amount: parseFloat(amount) || 0, 
-              currency: 'UZS', 
-              stage: finalStage, 
+              title: trimmedTitle,
+              clientId: undefined,
+              contactName: contactName.trim() || undefined,
+              amount: parseFloat(amount) || 0,
+              currency: 'UZS',
+              stage: finalStage,
               funnelId: finalFunnelId || undefined,
-              source: source || 'manual', 
-              assigneeId: assigneeId || undefined, 
+              source: source || 'manual',
+              assigneeId: assigneeId || undefined,
               notes: notes.trim() || undefined,
-              projectId: undefined, // Убрали проект
-              telegramChatId: editingDeal?.telegramChatId, 
-              telegramUsername: editingDeal?.telegramUsername, 
-              createdAt: editingDeal ? editingDeal.createdAt : new Date().toISOString(), 
-              comments: comments || []
+              projectId: undefined,
+              telegramChatId: editingDeal?.telegramChatId,
+              telegramUsername: editingDeal?.telegramUsername,
+              createdAt: editingDeal ? editingDeal.createdAt : new Date().toISOString(),
+              comments: comments || [],
+              createdByUserId: editingDeal ? editingDeal.createdByUserId : (currentUser?.id ?? undefined),
           };
           
           console.log('[DEAL] Saving deal:', dealData);
@@ -541,7 +551,7 @@ const SalesFunnelView: React.FC<SalesFunnelViewProps> = ({ deals, clients, users
         </div>
       </div>
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="max-w-7xl mx-auto w-full px-6 pb-20 h-full overflow-y-auto custom-scrollbar">
+        <div className="max-w-7xl mx-auto w-full px-6 pb-24 md:pb-32 h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
           {viewMode === 'kanban' ? (
               <div className="h-full flex flex-col gap-4">
                   <div className="flex h-full overflow-x-auto gap-3 md:gap-4 pb-4">
@@ -1052,7 +1062,8 @@ const SalesFunnelView: React.FC<SalesFunnelViewProps> = ({ deals, clients, users
                                                   time: '10:00',
                                                   participantIds: editingDeal.assigneeId ? [editingDeal.assigneeId] : [],
                                                   summary: '',
-                                                  isArchived: false
+                                                  isArchived: false,
+                                                  createdByUserId: currentUser?.id,
                                               };
                                               onSaveMeeting(newMeeting);
                                           }}

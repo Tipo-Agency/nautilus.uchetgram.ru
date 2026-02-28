@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Department, FinanceCategory, Fund, FinancePlan, PurchaseRequest, FinancialPlanDocument, FinancialPlanning } from '../../../types';
+import { Department, FinanceCategory, Fund, FinancePlan, PurchaseRequest, FinancialPlanDocument, FinancialPlanning, BankStatement, IncomeReport } from '../../../types';
 import { api } from '../../../backend/api';
 import { createSaveHandler, createDeleteHandler } from '../../../utils/crudUtils';
 import { NOTIFICATION_MESSAGES } from '../../../constants/messages';
@@ -13,6 +13,8 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [financialPlanDocuments, setFinancialPlanDocuments] = useState<FinancialPlanDocument[]>([]);
   const [financialPlannings, setFinancialPlannings] = useState<FinancialPlanning[]>([]);
+  const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
+  const [incomeReports, setIncomeReports] = useState<IncomeReport[]>([]);
 
   // Departments
   const saveDepartment = createSaveHandler(
@@ -112,9 +114,25 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
     NOTIFICATION_MESSAGES.FINANCIAL_PLANNING_DELETED
   );
 
+  // Bank Statements
+  const saveBankStatements = createSaveHandler(
+    setBankStatements,
+    api.finance.updateBankStatements,
+    showNotification,
+    'Выписки сохранены'
+  );
+
+  // Income Reports
+  const saveIncomeReports = createSaveHandler(
+    setIncomeReports,
+    api.finance.updateIncomeReports,
+    showNotification,
+    'Справка о доходах сохранена'
+  );
+
   return {
-    state: { departments, financeCategories, funds, financePlan, purchaseRequests, financialPlanDocuments, financialPlannings },
-    setters: { setDepartments, setFinanceCategories, setFunds, setFinancePlan, setPurchaseRequests, setFinancialPlanDocuments, setFinancialPlannings },
+    state: { departments, financeCategories, funds, financePlan, purchaseRequests, financialPlanDocuments, financialPlannings, bankStatements, incomeReports },
+    setters: { setDepartments, setFinanceCategories, setFunds, setFinancePlan, setPurchaseRequests, setFinancialPlanDocuments, setFinancialPlannings, setBankStatements, setIncomeReports },
     actions: { 
         saveDepartment, deleteDepartment, 
         saveFinanceCategory, deleteFinanceCategory,
@@ -122,7 +140,8 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
         updateFinancePlan,
         savePurchaseRequest, deletePurchaseRequest,
         saveFinancialPlanDocument, deleteFinancialPlanDocument,
-        saveFinancialPlanning, deleteFinancialPlanning
+        saveFinancialPlanning, deleteFinancialPlanning,
+        saveBankStatements, saveIncomeReports,
     }
   };
 };

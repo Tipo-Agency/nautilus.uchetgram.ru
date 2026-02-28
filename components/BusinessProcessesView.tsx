@@ -333,6 +333,170 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
     setShowCompletedInstances('hide');
   }, []);
 
+  // Если выбран экземпляр — показываем его детали (приоритет над страницей процесса)
+  if (selectedInstanceId) {
+      const instanceData = allInstances.find(({ instance: inst }) => inst.id === selectedInstanceId);
+      if (!instanceData) {
+          return (
+              <div className="h-full flex flex-col items-center justify-center p-6">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">Экземпляр не найден</p>
+                  <button onClick={() => setSelectedInstanceId(null)} className="px-4 py-2 bg-gray-200 dark:bg-[#333] rounded-lg text-sm">← Назад к списку</button>
+              </div>
+          );
+      }
+      const process = instanceData.process;
+      const inst = instanceData.instance;
+      const instanceTasks = instanceData.tasks;
+      const processVersion = processes.find(p => p.id === process.id && (p.version || 1) === (inst.processVersion || 1));
+
+      return (
+          <div className="h-full flex flex-col min-h-0 bg-white dark:bg-[#191919]">
+              <div className="border-b border-gray-200 dark:border-[#333] bg-white dark:bg-[#252525] px-6 py-4 flex-shrink-0">
+                  <div className="max-w-7xl mx-auto flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                          <button
+                              onClick={() => setSelectedInstanceId(null)}
+                              className="flex items-center gap-2 p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-lg transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                          >
+                              <ArrowLeft size={20} />
+                              <span className="text-sm font-medium">Назад к запущенным</span>
+                          </button>
+                          <div className="flex items-center gap-3">
+                              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                  <Network size={20} />
+                              </div>
+                              <div>
+                                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">{process.title}</h1>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                      Экземпляр v{inst.processVersion || process.version || 1} • {inst.status === 'active' ? 'Активен' : inst.status === 'completed' ? 'Завершён' : 'Приостановлен'} • Запущен {new Date(inst.startedAt).toLocaleString('ru-RU')}
+                                  </p>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                  <div className="max-w-7xl mx-auto px-6 py-6">
+                      {process.description && (
+                          <div className="mb-6 p-4 bg-gray-50 dark:bg-[#2a2a2a] border border-gray-200 dark:border-[#333] rounded-xl">
+                              <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">О процессе</h3>
+                              <p className="text-sm text-gray-700 dark:text-gray-300">{process.description}</p>
+                          </div>
+                      )}
+                      {inst.pendingBranchSelection && onCompleteProcessStepWithBranch && (() => {
+                          const step = (processVersion || process).steps.find(s => s.id === inst.pendingBranchSelection!.stepId);
+                          if (!step || step.stepType !== 'variant' || !step.branches?.length) return null;
+                          return (
+                              <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6">
+                                  <h3 className="text-sm font-bold text-amber-800 dark:text-amber-200 uppercase mb-2">Выберите вариант перехода</h3>
+                                  <p className="text-xs text-amber-700 dark:text-amber-300 mb-4">Шаг «{step.title}» завершён. Выберите, куда направить процесс:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                      {step.branches.map(b => {
+                                          const nextStep = (processVersion || process).steps.find(s => s.id === b.nextStepId);
+                                          return (
+                                              <button
+                                                  key={b.id}
+                                                  onClick={() => onCompleteProcessStepWithBranch(inst.id, b.nextStepId)}
+                                                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                              >
+                                                  {b.label}
+                                                  {nextStep && <span className="ml-1 opacity-80">→ {nextStep.title}</span>}
+                                              </button>
+                                          );
+                                      })}
+                                  </div>
+                              </div>
+                          );
+                      })()}
+                      <div className="mb-6 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-6 shadow-sm">
+                          <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase mb-4">Шаги процесса (версия {inst.processVersion || process.version || 1})</h2>
+                          <div className="space-y-3">
+                              {(processVersion || process).steps.map((step, idx) => {
+                                  const stepStatus = getStepStatus(step.id, inst, instanceTasks);
+                                  const stepTask = instanceTasks.find(t => t.stepId === step.id);
+                                  return (
+                                      <div key={step.id} className="relative">
+                                          <div className={`bg-gray-50 dark:bg-[#2a2a2a] border rounded-lg p-4 flex items-center justify-between ${
+                                              stepStatus === 'completed' ? 'border-green-300 dark:border-green-700' :
+                                              stepStatus === 'active' ? 'border-blue-300 dark:border-blue-700' :
+                                              'border-gray-200 dark:border-[#333]'
+                                          }`}>
+                                              <div className="flex items-center gap-3 flex-1">
+                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                                                      stepStatus === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
+                                                      stepStatus === 'active' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
+                                                      'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
+                                                  }`}>
+                                                      {stepStatus === 'completed' ? <CheckCircle2 size={16} /> : idx + 1}
+                                                  </div>
+                                                  <div className="flex-1">
+                                                      <div className="font-medium text-gray-900 dark:text-white text-sm">{step.title}</div>
+                                                      {step.description && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{step.description}</div>}
+                                                      {stepTask && (
+                                                          <div className="mt-2">
+                                                              <button
+                                                                  onClick={() => onOpenTask(stepTask as Task)}
+                                                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                                              >
+                                                                  <FileText size={12} /> {stepTask.title} ({stepTask.status})
+                                                              </button>
+                                                          </div>
+                                                      )}
+                                                  </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 bg-white dark:bg-[#333] px-3 py-1.5 rounded-lg text-xs">
+                                                  {step.assigneeType === 'position' ? <Building2 size={14} className="text-purple-500"/> : <UserIcon size={14} className="text-blue-500"/>}
+                                                  <span className="text-gray-700 dark:text-gray-300 font-medium">{getAssigneeName(step)}</span>
+                                              </div>
+                                          </div>
+                                          {idx < (processVersion || process).steps.length - 1 && (
+                                              <div className="flex justify-center py-2"><ArrowDown size={16} className="text-gray-300 dark:text-gray-600"/></div>
+                                          )}
+                                      </div>
+                                  );
+                              })}
+                          </div>
+                      </div>
+                      <div className="bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-6 shadow-sm">
+                          <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Задачи экземпляра ({instanceTasks.length})</h2>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Нажмите на задачу, чтобы открыть и ознакомиться с деталями</p>
+                          {instanceTasks.length === 0 ? (
+                              <p className="text-sm text-gray-500 dark:text-gray-400 py-4">Пока нет задач по этому экземпляру</p>
+                          ) : (
+                              <div className="space-y-2">
+                                  {instanceTasks.map(task => {
+                                      const assignee = users.find(u => u.id === task.assigneeId);
+                                      return (
+                                          <div
+                                              key={task.id}
+                                              onClick={() => onOpenTask(task as Task)}
+                                              className="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] cursor-pointer transition-colors border border-transparent hover:border-indigo-200 dark:hover:border-indigo-800"
+                                          >
+                                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                                  <FileText size={14} className="text-gray-400 flex-shrink-0" />
+                                                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{task.title}</span>
+                                              </div>
+                                              <div className="flex items-center gap-2 flex-shrink-0">
+                                                  {assignee && <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">{assignee.name}</span>}
+                                                  {task.endDate && <span className="text-xs text-gray-400 dark:text-gray-500">{task.endDate}</span>}
+                                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                                      task.status === 'Выполнено' || task.status === 'Done'
+                                                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                          : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                                                  }`}>{task.status}</span>
+                                              </div>
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          )}
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   // Если выбран процесс, показываем его страницу
   if (selectedProcess) {
       const instances = getProcessInstances(selectedProcess.id);
@@ -498,8 +662,7 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
                                                               {instanceTasks.map(task => (
                                                                   <div
                                                                       key={task.id}
-                                                                      onClick={() => onOpenTask(task as Task)}
-                                                                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] cursor-pointer transition-colors"
+                                                                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg"
                                                                   >
                                                                       <div className="flex items-center gap-2">
                                                                           <FileText size={14} className="text-gray-400" />
@@ -753,173 +916,6 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
       );
   }
 
-  // Если выбран экземпляр, показываем его детали
-  if (selectedInstanceId) {
-      const instance = allInstances.find(({ instance: inst }) => inst.id === selectedInstanceId);
-      if (!instance) {
-          setSelectedInstanceId(null);
-          return null;
-      }
-
-      const process = instance.process;
-      const inst = instance.instance;
-      const instanceTasks = instance.tasks;
-      // Находим версию процесса, которая была на момент запуска экземпляра
-      const processVersion = processes.find(p => p.id === process.id && (p.version || 1) === (inst.processVersion || 1));
-
-      return (
-          <div className="h-full flex flex-col min-h-0 bg-white dark:bg-[#191919]">
-              {/* Header */}
-              <div className="border-b border-gray-200 dark:border-[#333] bg-white dark:bg-[#252525] px-6 py-4 flex-shrink-0">
-                  <div className="max-w-7xl mx-auto flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                          <button
-                              onClick={() => setSelectedInstanceId(null)}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-[#333] rounded-lg transition-colors"
-                          >
-                              <ArrowLeft size={20} className="text-gray-600 dark:text-gray-400" />
-                          </button>
-                          <div className="flex items-center gap-3">
-                              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
-                                  <Network size={20} />
-                              </div>
-                              <div>
-                                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">{process.title}</h1>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                      Экземпляр v{inst.processVersion || process.version || 1} • {inst.status === 'active' ? 'Активен' : 'Завершён'} • Запущен {new Date(inst.startedAt).toLocaleString('ru-RU')}
-                                  </p>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
-                  <div className="max-w-7xl mx-auto px-6 py-6">
-                      {/* Выбор ветки при варианте */}
-                      {inst.pendingBranchSelection && onCompleteProcessStepWithBranch && (() => {
-                          const step = (processVersion || process).steps.find(s => s.id === inst.pendingBranchSelection!.stepId);
-                          if (!step || step.stepType !== 'variant' || !step.branches?.length) return null;
-                          return (
-                              <div className="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-6">
-                                  <h3 className="text-sm font-bold text-amber-800 dark:text-amber-200 uppercase mb-2">Выберите вариант перехода</h3>
-                                  <p className="text-xs text-amber-700 dark:text-amber-300 mb-4">Шаг «{step.title}» завершён. Выберите, куда направить процесс:</p>
-                                  <div className="flex flex-wrap gap-2">
-                                      {step.branches.map(b => {
-                                          const nextStep = (processVersion || process).steps.find(s => s.id === b.nextStepId);
-                                          return (
-                                              <button
-                                                  key={b.id}
-                                                  onClick={() => onCompleteProcessStepWithBranch(inst.id, b.nextStepId)}
-                                                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
-                                              >
-                                                  {b.label}
-                                                  {nextStep && <span className="ml-1 opacity-80">→ {nextStep.title}</span>}
-                                              </button>
-                                          );
-                                      })}
-                                  </div>
-                              </div>
-                          );
-                      })()}
-
-                      {/* Process Steps with Status */}
-                      <div className="mb-6 bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-6 shadow-sm">
-                          <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase mb-4">Шаги процесса (версия {inst.processVersion || process.version || 1})</h2>
-                          <div className="space-y-3">
-                              {(processVersion || process).steps.map((step, idx) => {
-                                  const stepStatus = getStepStatus(step.id, inst, instanceTasks);
-                                  const stepTask = instanceTasks.find(t => t.stepId === step.id);
-                                  
-                                  return (
-                                      <div key={step.id} className="relative">
-                                          <div className={`bg-gray-50 dark:bg-[#2a2a2a] border rounded-lg p-4 flex items-center justify-between ${
-                                              stepStatus === 'completed' ? 'border-green-300 dark:border-green-700' :
-                                              stepStatus === 'active' ? 'border-blue-300 dark:border-blue-700' :
-                                              'border-gray-200 dark:border-[#333]'
-                                          }`}>
-                                              <div className="flex items-center gap-3 flex-1">
-                                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                      stepStatus === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' :
-                                                      stepStatus === 'active' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' :
-                                                      'bg-gray-100 dark:bg-[#333] text-gray-600 dark:text-gray-400'
-                                                  }`}>
-                                                      {stepStatus === 'completed' ? <CheckCircle2 size={16} /> : idx + 1}
-                                                  </div>
-                                                  <div className="flex-1">
-                                                      <div className="font-medium text-gray-900 dark:text-white text-sm">{step.title}</div>
-                                                      {step.description && (
-                                                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{step.description}</div>
-                                                      )}
-                                                      {stepTask && (
-                                                          <div className="mt-2">
-                                                              <button
-                                                                  onClick={() => onOpenTask(stepTask as Task)}
-                                                                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                                                              >
-                                                                  <FileText size={12} />
-                                                                  {stepTask.title} ({stepTask.status})
-                                                              </button>
-                                                          </div>
-                                                      )}
-                                                  </div>
-                                              </div>
-                                              <div className="flex items-center gap-2 bg-white dark:bg-[#333] px-3 py-1.5 rounded-lg text-xs">
-                                                  {step.assigneeType === 'position' ? (
-                                                      <Building2 size={14} className="text-purple-500"/>
-                                                  ) : (
-                                                      <UserIcon size={14} className="text-blue-500"/>
-                                                  )}
-                                                  <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                                      {getAssigneeName(step)}
-                                                  </span>
-                                              </div>
-                                          </div>
-                                          {idx < (processVersion || process).steps.length - 1 && (
-                                              <div className="flex justify-center py-2">
-                                                  <ArrowDown size={16} className="text-gray-300 dark:text-gray-600"/>
-                                              </div>
-                                          )}
-                                      </div>
-                                  );
-                              })}
-                          </div>
-                      </div>
-
-                      {/* Tasks */}
-                      {instanceTasks.length > 0 && (
-                          <div className="bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-6 shadow-sm">
-                              <h2 className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase mb-4">Задачи экземпляра ({instanceTasks.length})</h2>
-                              <div className="space-y-2">
-                                  {instanceTasks.map(task => (
-                                      <div
-                                          key={task.id}
-                                          onClick={() => onOpenTask(task as Task)}
-                                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] cursor-pointer transition-colors"
-                                      >
-                                          <div className="flex items-center gap-2">
-                                              <FileText size={14} className="text-gray-400" />
-                                              <span className="text-sm text-gray-700 dark:text-gray-300">{task.title}</span>
-                                          </div>
-                                          <span className={`text-xs px-2 py-0.5 rounded ${
-                                              task.status === 'Выполнено' || task.status === 'Done'
-                                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                                          }`}>
-                                              {task.status}
-                                          </span>
-                                      </div>
-                                  ))}
-                              </div>
-                          </div>
-                      )}
-                  </div>
-              </div>
-          </div>
-      );
-  }
-
   // Список процессов
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -1034,12 +1030,12 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
                       <div
                         key={instance.id}
                         onClick={() => setSelectedInstanceId(instance.id)}
-                        className="bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
+                        className="bg-white dark:bg-[#252525] border border-gray-200 dark:border-[#333] rounded-xl p-5 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all cursor-pointer group"
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-gray-900 dark:text-white text-base">
+                              <h3 className="font-bold text-gray-900 dark:text-white text-base group-hover:text-indigo-600 dark:group-hover:text-indigo-400">
                                 {process.title}
                               </h3>
                               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -1063,7 +1059,9 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
                               </p>
                             )}
                           </div>
-                          <ChevronRight size={18} className="text-gray-400 flex-shrink-0" />
+                          <span className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 text-sm font-medium flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            Открыть <ChevronRight size={18} />
+                          </span>
                         </div>
                         
                         <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
@@ -1085,18 +1083,14 @@ const BusinessProcessesView: React.FC<BusinessProcessesViewProps> = ({
                           )}
                         </div>
                         
-                        {tasks.length > 0 && (
+                          {tasks.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[#333]">
                             <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Задачи:</div>
                             <div className="space-y-1.5">
                               {tasks.slice(0, 3).map(task => (
                                 <div
                                   key={task.id}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onOpenTask(task as Task);
-                                  }}
-                                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] cursor-pointer transition-colors"
+                                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#2a2a2a] rounded-lg"
                                 >
                                   <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
                                     {task.title}

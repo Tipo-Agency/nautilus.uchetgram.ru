@@ -15,4 +15,5 @@ export { Select } from './Select';
 export { Toast } from './Toast';
 export { Touchable } from './Touchable';
 export { DateInput } from './DateInput';
+export { InDevelopmentOverlay } from './InDevelopmentOverlay';
 

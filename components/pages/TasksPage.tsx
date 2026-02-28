@@ -202,7 +202,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
 
   return (
     <PageLayout>
-      <Container safeArea className="py-6">
+      <Container safeArea className="py-6 pb-24 md:pb-32">
         <TasksHeader
           showFilters={showFilters}
           hasActiveFilters={hasActiveFilters}

@@ -1,9 +1,12 @@
+/** Убрать плашку «В разработке» — см. InDevelopmentOverlay */
+const IN_DEV_BP = true;
 
 import React from 'react';
 import { EmployeeInfo, User, Department, OrgPosition, BusinessProcess, Task, TableCollection } from '../../types';
 import EmployeesView from '../EmployeesView';
 import DepartmentsView from '../DepartmentsView';
 import BusinessProcessesView from '../BusinessProcessesView';
+import { InDevelopmentOverlay } from '../ui';
 
 interface HRModuleProps {
   view: 'employees' | 'departments' | 'business-processes';
@@ -27,7 +30,9 @@ export const HRModule: React.FC<HRModuleProps> = ({ view, employees, users, depa
         return <DepartmentsView departments={departments} users={users} onSave={actions.saveDepartment} onDelete={actions.deleteDepartment} />;
     }
     if (view === 'business-processes') {
-        return <BusinessProcessesView 
+        return (
+            <InDevelopmentOverlay active={IN_DEV_BP}>
+                <BusinessProcessesView 
             processes={processes} 
             orgPositions={orgPositions} 
             users={users} 
@@ -40,7 +45,9 @@ export const HRModule: React.FC<HRModuleProps> = ({ view, employees, users, depa
             onOpenTask={actions.openTaskModal}
             onCompleteProcessStepWithBranch={actions.completeProcessStepWithBranch}
             autoOpenCreateModal={autoOpenCreateModal}
-        />;
+        />
+            </InDevelopmentOverlay>
+        );
     }
     return null;
 };

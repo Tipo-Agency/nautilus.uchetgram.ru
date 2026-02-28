@@ -275,7 +275,7 @@ const HomeView: React.FC<HomeViewProps> = ({
                         {financePlan && financePlan.salesPlan > 0 && (
                             <>
                                 <div className="w-full bg-gray-100 dark:bg-[#333] h-1 rounded-full overflow-hidden mb-1">
-                                    <div className="bg-[#267022] h-full rounded-full" style={{ width: `${Math.min(100, planPercent)}%` }}></div>
+                                    <div className="bg-[#382EA6] h-full rounded-full" style={{ width: `${Math.min(100, planPercent)}%` }}></div>
                                 </div>
                                 <div className="flex justify-between text-[10px] text-gray-500 dark:text-gray-400">
                                     <span>{planPercent}% от плана</span>

@@ -20,11 +20,11 @@ import {
   FileText,
   Users,
   Archive,
-  Layers,
-  Globe
+  Layers
 } from 'lucide-react';
 import { TableCollection, User, Role } from '../types';
-import { LogoIcon, DynamicIcon } from './AppIcons';
+import { DynamicIcon } from './AppIcons';
+import { Logo } from './Logo';
 
 interface SidebarProps {
   isOpen: boolean; // Mobile state
@@ -32,7 +32,7 @@ interface SidebarProps {
   tables: TableCollection[];
   activeTableId: string;
   onSelectTable: (id: string) => void;
-  onNavigate: (view: 'home' | 'tasks' | 'inbox' | 'search' | 'clients' | 'employees' | 'sales-funnel' | 'finance' | 'business-processes' | 'analytics' | 'settings' | 'sites' | 'inventory') => void;
+  onNavigate: (view: 'home' | 'tasks' | 'inbox' | 'search' | 'clients' | 'employees' | 'sales-funnel' | 'finance' | 'business-processes' | 'analytics' | 'settings') => void;
   currentView: string;
   currentUser: User;
   onCreateTable: () => void;
@@ -108,14 +108,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
         h-full flex flex-col text-notion-text dark:text-gray-300
       `} style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {/* Workspace Header */}
+        {/* Workspace Header — только лого */}
         <div className={`flex items-center ${isCollapsed ? 'justify-center relative' : 'justify-between'} p-2 mb-2`}>
             <div 
                 onClick={() => handleNav(() => onNavigate('home'))}
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} hover:bg-notion-hover dark:hover:bg-[#252525] rounded cursor-pointer transition-colors p-2 ${isCollapsed ? 'w-full' : 'flex-1'}`}
+                className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-center'} hover:bg-notion-hover dark:hover:bg-[#252525] rounded cursor-pointer transition-colors p-2 ${isCollapsed ? 'w-full' : 'flex-1'}`}
             >
-                <LogoIcon className="w-6 h-6 shrink-0" />
-                {!isCollapsed && <span className="font-semibold text-sm">taska.uz</span>}
+                <Logo className="h-6 w-auto max-w-[140px]" />
             </div>
             {!isCollapsed && (
               <div className="flex items-center gap-1 shrink-0">
@@ -129,13 +128,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Standard Links - Порядок согласно TЗ */}
         <div className={`${isCollapsed ? 'px-2' : 'px-2'} py-1 space-y-0.5 mb-4 shrink-0`} style={{ overflow: 'visible' }}>
-            {/* 1. Главная */}
+            {/* 1. Рабочий стол */}
             <div 
                 onClick={() => handleNav(() => onNavigate('home'))}
                 className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-1.5 rounded cursor-pointer transition-colors ${currentView === 'home' ? 'bg-notion-hover dark:bg-[#252525] text-notion-text dark:text-white font-medium' : 'text-notion-text/70 dark:text-gray-400 hover:bg-notion-hover dark:hover:bg-[#252525] hover:text-notion-text dark:hover:text-gray-200'}`}
-                title={isCollapsed ? "Главная" : ""}
+                title={isCollapsed ? "Рабочий стол" : ""}
             >
-            <Home size={18} /> {!isCollapsed && <span className="text-sm">Главная</span>}
+            <Home size={18} /> {!isCollapsed && <span className="text-sm">Рабочий стол</span>}
             </div>
             
             {/* 2. Задачи */}
@@ -163,15 +162,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 title={isCollapsed ? "Клиенты и договора" : ""}
             >
                 <Briefcase size={18} /> {!isCollapsed && <span className="text-sm">Клиенты и договора</span>}
-            </div>
-
-            {/* 3.2. Склад */}
-            <div 
-                onClick={() => handleNav(() => onNavigate('inventory'))}
-                className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} ${isCollapsed ? 'px-2' : 'px-3'} py-1.5 rounded cursor-pointer transition-colors ${currentView === 'inventory' ? 'bg-notion-hover dark:bg-[#252525] text-notion-text dark:text-white font-medium' : 'text-notion-text/70 dark:text-gray-400 hover:bg-notion-hover dark:hover:bg-[#252525] hover:text-notion-text dark:hover:text-gray-200'}`}
-                title={isCollapsed ? "Склад" : ""}
-            >
-                <Layers size={18} /> {!isCollapsed && <span className="text-sm">Склад</span>}
             </div>
 
             {/* 4. Финансовое планирование */}
@@ -233,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Tables List with Grouping */}
         <div className={`${isCollapsed ? 'px-2' : 'px-3'} flex-1 overflow-y-auto custom-scrollbar min-h-0`}>
-            {/* Контент планы, Беклог, Функционал */}
+            {/* Контент планы, Идеи, Проекты */}
             {!isCollapsed && (
               <div className="space-y-0.5 mb-3">
                 {/* Контент планы */}
@@ -244,31 +234,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <Instagram size={16} /> <span className="text-sm">Контент планы</span>
                 </div>
 
-                {/* Беклог */}
+                {/* Идеи (ex Беклог) */}
                 <div 
                   data-nav-item="backlog"
                   onClick={() => handleNav(() => onNavigateToType?.('backlog'))}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition-colors ${(currentView === 'spaces' && activeSpaceTab === 'backlog') || (currentView === 'table' && activeTableId && tables.find(t => t.id === activeTableId)?.type === 'backlog') ? 'bg-notion-hover dark:bg-[#252525] text-notion-text dark:text-white font-medium' : 'text-notion-text/70 dark:text-gray-400 hover:bg-notion-hover dark:hover:bg-[#252525] hover:text-notion-text dark:hover:text-gray-200'}`}
                 >
-                  <Archive size={16} /> <span className="text-sm">Беклог</span>
+                  <Archive size={16} /> <span className="text-sm">Идеи</span>
                 </div>
 
-                {/* Функционал */}
+                {/* Проекты (ex Функционал) */}
                 <div 
                   data-nav-item="functionality"
                   onClick={() => handleNav(() => onNavigateToType?.('functionality'))}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition-colors ${(currentView === 'spaces' && activeSpaceTab === 'functionality') || (currentView === 'table' && activeTableId && tables.find(t => t.id === activeTableId)?.type === 'functionality') ? 'bg-notion-hover dark:bg-[#252525] text-notion-text dark:text-white font-medium' : 'text-notion-text/70 dark:text-gray-400 hover:bg-notion-hover dark:hover:bg-[#252525] hover:text-notion-text dark:hover:text-gray-200'}`}
                 >
-                  <Layers size={16} /> <span className="text-sm">Функционал</span>
-                </div>
-
-                {/* Сайты */}
-                <div 
-                  data-nav-item="sites"
-                  onClick={() => handleNav(() => onNavigate('sites'))}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded cursor-pointer transition-colors ${currentView === 'sites' ? 'bg-notion-hover dark:bg-[#252525] text-notion-text dark:text-white font-medium' : 'text-notion-text/70 dark:text-gray-400 hover:bg-notion-hover dark:hover:bg-[#252525] hover:text-notion-text dark:hover:text-gray-200'}`}
-                >
-                  <Globe size={16} /> <span className="text-sm">Сайты</span>
+                  <Layers size={16} /> <span className="text-sm">Проекты</span>
                 </div>
               </div>
             )}

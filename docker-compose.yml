@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taska
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-taska}
+      POSTGRES_DB: taska
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taska -d taska"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./server
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://taska:${DB_PASSWORD:-taska}@db:5432/taska
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      CORS_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # telegram-bot: раскомментируйте и задайте TELEGRAM_BOT_TOKEN для запуска бота
+  # telegram-bot:
+  #   build: ./telegram-bot
+  #   environment:
+  #     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+  #     BACKEND_URL: http://backend:8000
+  #   depends_on:
+  #     - backend
+
+volumes:
+  pgdata:

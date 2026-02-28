@@ -223,33 +223,27 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
           {/* Переключение видов — ширина как в воронке (inline) */}
           <div className="mb-4">
-            <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-[#252525] rounded-full p-1 text-xs mb-4">
+            <div className="flex w-full items-center gap-1 bg-gray-100 dark:bg-[#252525] rounded-full p-1 text-xs mb-4">
               <button
                 onClick={() => setViewMode(ViewMode.TABLE)}
-                className={`px-3 py-1.5 rounded-full ${
-                  viewMode === ViewMode.TABLE
-                    ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300'
+                className={`flex items-center justify-center px-3 py-1.5 rounded-full shrink-0 transition-colors ${
+                  viewMode === ViewMode.TABLE ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 Таблица
               </button>
               <button
                 onClick={() => setViewMode(ViewMode.KANBAN)}
-                className={`px-3 py-1.5 rounded-full ${
-                  viewMode === ViewMode.KANBAN
-                    ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300'
+                className={`flex items-center justify-center px-3 py-1.5 rounded-full shrink-0 transition-colors ${
+                  viewMode === ViewMode.KANBAN ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 Канбан
               </button>
               <button
                 onClick={() => setViewMode(ViewMode.GANTT)}
-                className={`px-3 py-1.5 rounded-full ${
-                  viewMode === ViewMode.GANTT
-                    ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300'
+                className={`flex items-center justify-center px-3 py-1.5 rounded-full shrink-0 transition-colors ${
+                  viewMode === ViewMode.GANTT ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 Гант

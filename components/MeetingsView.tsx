@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Meeting, User, TableCollection, Client, Deal } from '../types';
 import { Calendar, Users, Plus, X, List, LayoutGrid, Clock, Repeat, Check, Trash2, Box, Briefcase, Building2 } from 'lucide-react';
 import { TaskSelect } from './TaskSelect';
@@ -11,14 +11,15 @@ interface MeetingsViewProps {
   clients?: Client[];
   deals?: Deal[];
   tableId: string;
-  showAll?: boolean; // Aggregator mode
+  showAll?: boolean;
   tables?: TableCollection[];
+  currentUser?: User;
   onSaveMeeting: (meeting: Meeting) => void;
   onDeleteMeeting?: (meetingId: string) => void;
   onUpdateSummary: (meetingId: string, summary: string) => void;
 }
 
-const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clients = [], deals = [], tableId, showAll = false, tables = [], onSaveMeeting, onDeleteMeeting, onUpdateSummary }) => {
+const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clients = [], deals = [], tableId, showAll = false, tables = [], currentUser, onSaveMeeting, onDeleteMeeting, onUpdateSummary }) => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
@@ -67,7 +68,7 @@ const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clien
       setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (meeting: Meeting) => {
+  const handleOpenEdit = useCallback((meeting: Meeting) => {
       setEditingMeeting(meeting);
       setMeetingType(meeting.type || 'work');
       setTitle(meeting.title);
@@ -77,7 +78,16 @@ const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clien
       setSelectedDealId(meeting.dealId || '');
       setSelectedParticipants(meeting.participantIds || []);
       setIsModalOpen(true);
-  };
+  }, []);
+
+  // Открыть встречу для редактирования из ленты (Входящие/Исходящие)
+  useEffect(() => {
+    const handleEdit = (e: CustomEvent<{ meeting: Meeting }>) => {
+      if (e.detail?.meeting) handleOpenEdit(e.detail.meeting);
+    };
+    window.addEventListener('openEditMeetingModal', handleEdit as EventListener);
+    return () => window.removeEventListener('openEditMeetingModal', handleEdit as EventListener);
+  }, [handleOpenEdit]);
 
   const handleCreate = (e?: React.FormEvent) => {
       if (e) e.preventDefault();
@@ -93,20 +103,19 @@ const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clien
       const clientIdFromDeal = selectedDeal?.clientId;
       
       if (editingMeeting) {
-          // Редактирование существующей встречи
           onSaveMeeting({
               ...editingMeeting,
               type: meetingType,
               title,
               date,
               time,
-              recurrence: meetingType === 'work' ? recurrence : 'none', // Повторение только для рабочих встреч
+              recurrence: meetingType === 'work' ? recurrence : 'none',
               dealId: meetingType === 'client' ? selectedDealId : undefined,
               clientId: meetingType === 'client' ? clientIdFromDeal : undefined,
-              participantIds: selectedParticipants
+              participantIds: selectedParticipants,
+              createdByUserId: editingMeeting.createdByUserId ?? currentUser?.id,
           });
       } else {
-          // Создание новой встречи
           const newMeeting: Meeting = {
               id: `m-${Date.now()}`,
               tableId,
@@ -119,7 +128,8 @@ const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clien
               clientId: meetingType === 'client' ? clientIdFromDeal : undefined,
               participantIds: selectedParticipants,
               summary: '',
-              isArchived: false
+              isArchived: false,
+              createdByUserId: currentUser?.id,
           };
           onSaveMeeting(newMeeting);
       }
@@ -269,22 +279,20 @@ const MeetingsView: React.FC<MeetingsViewProps> = ({ meetings = [], users, clien
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-[#252525] rounded-full p-1 text-xs">
               <button 
                 onClick={() => setMeetingTypeFilter('all')} 
-                className={`px-3 py-1.5 rounded-full flex items-center gap-1 ${meetingTypeFilter === 'all' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full ${meetingTypeFilter === 'all' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
               >
                 Все
               </button>
               <button 
                 onClick={() => setMeetingTypeFilter('client')} 
-                className={`px-3 py-1.5 rounded-full flex items-center gap-1 ${meetingTypeFilter === 'client' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full ${meetingTypeFilter === 'client' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
               >
-                <Briefcase size={12} />
                 С клиентами
               </button>
               <button 
                 onClick={() => setMeetingTypeFilter('work')} 
-                className={`px-3 py-1.5 rounded-full flex items-center gap-1 ${meetingTypeFilter === 'work' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
+                className={`px-3 py-1.5 rounded-full ${meetingTypeFilter === 'work' ? 'bg-white dark:bg-[#191919] text-gray-900 dark:text-white shadow-sm' : 'text-gray-600 dark:text-gray-300'}`}
               >
-                <Building2 size={12} />
                 Рабочие
               </button>
             </div>

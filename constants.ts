@@ -1,8 +1,14 @@
 
 import { Project, Role, TableCollection, Task, User, Doc, StatusOption, PriorityOption, NotificationPreferences, Department, FinanceCategory, Fund, OrgPosition, AutomationRule } from "./types";
 
-// Демо: всё работает локально (localStorage)
-export const FIREBASE_DB_URL: string = '';
+/** Бренд клиента */
+export const APP_NAME = 'Наутилус';
+export const PRIMARY_COLOR = '#382EA6';
+export const LOGO_URL = '/logo.svg';
+/** Текст на странице входа */
+export const LOGIN_TITLE = 'Административная панель';
+export const LOGIN_SUBTITLE = 'Сети фитнес клубов Наутилус';
+
 
 export const TELEGRAM_CHAT_ID = '-1002719375477'; 
 

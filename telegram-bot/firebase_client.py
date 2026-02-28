@@ -1,21 +1,20 @@
 """
-Клиент для работы с Firebase Firestore
-Автоматически выбирает между REST API и Admin SDK в зависимости от наличия credentials
+Клиент данных — Python FastAPI backend.
+Firebase полностью удалён. Требуется BACKEND_URL в .env
 """
 import os
-import config
 
-# Проверяем, есть ли credentials файл
-USE_ADMIN_SDK = config.FIREBASE_CREDENTIALS_PATH and os.path.exists(config.FIREBASE_CREDENTIALS_PATH)
+# BACKEND_URL обязателен
+BACKEND_URL = os.getenv('BACKEND_URL', '').strip()
+if not BACKEND_URL:
+    raise ValueError(
+        "BACKEND_URL is required. Add to .env: BACKEND_URL=http://localhost:8000"
+    )
 
-if USE_ADMIN_SDK:
-    # Используем Admin SDK
-    from firebase_client_admin import FirebaseClient, firebase
-    print("[Firebase] Using Admin SDK with service account")
-else:
-    # Используем REST API
-    from firebase_client_rest import FirebaseClient, firebase
-    print("[Firebase] Using REST API (no credentials file)")
+from backend_client import backend_client
 
-# Экспортируем для использования в других модулях
+# Алиас для совместимости с существующим кодом
+firebase = backend_client
+FirebaseClient = type('FirebaseClient', (), {})
+
 __all__ = ['FirebaseClient', 'firebase']

@@ -146,6 +146,8 @@ const App = () => {
                 purchaseRequests={state.purchaseRequests}
                 financialPlanDocuments={state.financialPlanDocuments}
                 financialPlannings={state.financialPlannings}
+                bankStatements={state.bankStatements}
+                incomeReports={state.incomeReports}
                 warehouses={state.warehouses}
                 inventoryItems={state.inventoryItems}
                 inventoryBalances={state.inventoryBalances}
@@ -158,6 +160,8 @@ const App = () => {
                 settingsActiveTab={state.settingsActiveTab}
                 activeSpaceTab={state.activeSpaceTab}
                 notificationPrefs={state.notificationPrefs}
+                inboxMessages={state.inboxMessages}
+                outboxMessages={state.outboxMessages}
                 actions={actions}
             />
             </div>

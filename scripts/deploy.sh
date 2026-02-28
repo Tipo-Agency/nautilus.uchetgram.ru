@@ -4,7 +4,7 @@
 
 set +e  # Не падаем на ошибках, обрабатываем их вручную
 
-SERVER_PATH="${SERVER_PATH:-/var/www/tipa.taska.uz}"
+SERVER_PATH="${SERVER_PATH:-/var/www/nautilus.uchetgram.ru}"
 TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 
 echo "🚀 Starting deployment..."
@@ -44,6 +44,20 @@ echo "🚀 Step 3: Deploying frontend..."
 npm ci || { echo "❌ npm ci failed"; exit 1; }
 npm run build || { echo "❌ npm build failed"; exit 1; }
 echo "✅ Frontend deployed"
+
+# 3.5. Деплой Python API (если есть server/)
+if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
+  echo ""
+  echo "🐍 Step 3.5: Deploying Python API..."
+  (cd "$SERVER_PATH/server" && {
+    [ -d "venv" ] || python3 -m venv venv
+    . venv/bin/activate && pip install -q -r requirements.txt
+  }) || echo "⚠️ Python API step failed"
+  if systemctl list-unit-files 2>/dev/null | grep -qE 'nautilus-api|nautilus-backend'; then
+    sudo systemctl restart nautilus-api.service 2>/dev/null || sudo systemctl restart nautilus-backend.service 2>/dev/null || true
+  fi
+  echo "✅ Python API updated"
+fi
 
 # 4. Деплой Telegram бота
 echo ""

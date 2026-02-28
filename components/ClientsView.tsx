@@ -230,7 +230,7 @@ const ClientsView: React.FC<ClientsViewProps> = ({
                 </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="max-w-7xl mx-auto w-full px-6 pb-20 h-full overflow-y-auto custom-scrollbar">
+        <div className="max-w-7xl mx-auto w-full px-6 pb-24 md:pb-32 h-full overflow-y-auto overflow-x-hidden custom-scrollbar">
           {activeTab === 'clients' && (
             <ClientsTab
               clients={filteredClients}

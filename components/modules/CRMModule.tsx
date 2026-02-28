@@ -1,8 +1,11 @@
+/** Убрать плашку «В разработке» — см. InDevelopmentOverlay */
+const IN_DEV_CRM = true;
 
 import React from 'react';
 import { Deal, Client, Contract, User, Project, Task, OneTimeDeal, AccountsReceivable, Meeting } from '../../types';
 import SalesFunnelView from '../SalesFunnelView';
 import ClientsView from '../ClientsView';
+import { InDevelopmentOverlay } from '../ui';
 
 interface CRMModuleProps {
   view: 'sales-funnel' | 'clients';
@@ -22,7 +25,9 @@ interface CRMModuleProps {
 
 export const CRMModule: React.FC<CRMModuleProps> = ({ view, deals, clients, contracts, oneTimeDeals = [], accountsReceivable = [], users, salesFunnels = [], projects, tasks, meetings = [], currentUser, actions, autoOpenCreateModal = false }) => {
   if (view === 'sales-funnel') {
-      return <SalesFunnelView 
+      return (
+        <InDevelopmentOverlay active={IN_DEV_CRM}>
+          <SalesFunnelView 
         deals={deals} 
         clients={clients} 
         users={users}
@@ -41,11 +46,15 @@ export const CRMModule: React.FC<CRMModuleProps> = ({ view, deals, clients, cont
         onUpdateMeetingSummary={actions.updateMeetingSummary}
         onOpenSettings={actions.openSettings ? () => actions.openSettings('sales-funnels') : undefined}
         autoOpenCreateModal={autoOpenCreateModal}
-      />;
+      />
+        </InDevelopmentOverlay>
+      );
   }
   
   if (view === 'clients') {
-      return <ClientsView 
+      return (
+        <InDevelopmentOverlay active={IN_DEV_CRM}>
+          <ClientsView 
         clients={clients} 
         contracts={contracts}
         oneTimeDeals={oneTimeDeals}
@@ -59,7 +68,9 @@ export const CRMModule: React.FC<CRMModuleProps> = ({ view, deals, clients, cont
         onDeleteOneTimeDeal={actions.deleteOneTimeDeal}
         onSaveAccountsReceivable={actions.saveAccountsReceivable}
         onDeleteAccountsReceivable={actions.deleteAccountsReceivable}
-      />;
+      />
+        </InDevelopmentOverlay>
+      );
   }
 
   return null;
