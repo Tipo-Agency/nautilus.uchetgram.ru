@@ -42,6 +42,7 @@ npm run push
 
 ## 3. Сервер (под пользователем deploy)
 
+
 ### 3.1. Подготовка директории
 
 Весь каталог проекта должен принадлежать пользователю `deploy`, иначе сборка (Vite) не сможет перезаписать `dist/`.
@@ -88,58 +89,6 @@ root /var/www/nautilus.uchetgram.ru/dist.live;
 # Python 3.9+
 ```
 
-### 3.6. Nginx и автодеплой конфига
-
-При каждом деплое скрипт подставляет путь в эталонный конфиг из репо (`deploy/nautilus.nginx.conf`), копирует его в `/etc/nginx/sites-available/nautilus.uchetgram.ru` и перезагружает nginx. Чтобы это работало без твоего участия, один раз выдай пользователю `deploy` право на копирование конфига и перезагрузку nginx (без пароля):
-
-```bash
-sudo visudo -f /etc/sudoers.d/nautilus-deploy
-```
-
-Добавь строку (подставь свой путь, если не `/var/www/nautilus.uchetgram.ru`):
-
-```
-deploy ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/nginx/sites-available/nautilus.uchetgram.ru, /usr/bin/ln, /usr/sbin/nginx -t, /usr/bin/systemctl reload nginx
-```
-
-Сохрани и закрой. После этого автодеплой сам обновляет конфиг nginx (root на `dist`/`dist.live`, favicon.ico → favicon.svg) и перезагружает nginx.
-
-Если правило не добавлять, скрипт попытается выполнить `nginx -t` и `systemctl reload nginx` без sudo (может сработать, если nginx уже настроен вручную).
-
-Ручной вариант конфига (если не используешь автодеплой конфига) — `root` должен указывать на каталог со сборкой, иначе 403:
-
-Полный пример `/etc/nginx/sites-available/nautilus.uchetgram.ru`:
-
-```nginx
-server {
-    listen 80;
-    server_name nautilus.uchetgram.ru;
-    # Путь до собранного фронта (dist — symlink на dist.XXXXXXXX)
-    root /var/www/nautilus.uchetgram.ru/dist;
-    index index.html;
-
-    location = /favicon.ico {
-        alias /var/www/nautilus.uchetgram.ru/dist/favicon.svg;
-        default_type image/svg+xml;
-    }
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-    location /api {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-Если 403 не пропал: на сервере проверь права и что по `root` есть `index.html`:
-```bash
-ls -la /var/www/nautilus.uchetgram.ru/dist/
-# Должны быть index.html, favicon.svg, assets/ и т.д.
-sudo -u www-data cat /var/www/nautilus.uchetgram.ru/dist/index.html > /dev/null && echo OK || echo FAIL
-```
-Если FAIL — nginx не может читать файлы: один раз выполни `chmod -R o+rX /var/www/nautilus.uchetgram.ru/dist` (или путь до реальной папки сборки, если dist — symlink).
 
 ### 3.7. Systemd-сервис для Python API (опционально)
 

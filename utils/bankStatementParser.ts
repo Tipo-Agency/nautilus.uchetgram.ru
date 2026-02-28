@@ -7,8 +7,9 @@ import type { BankStatementLine } from '../types';
 
 const DATE_COLUMNS = ['дата', 'date', 'дата операции', 'дата операции по документу', 'дата проводки'];
 const AMOUNT_COLUMNS = ['сумма', 'amount', 'сумма операции', 'сумма по дебету', 'сумма по кредиту'];
-const INCOME_COLUMNS = ['приход', 'доход', 'входящий остаток', 'поступление', 'кредит', 'credit'];
-const OUTCOME_COLUMNS = ['расход', 'списание', 'дебет', 'debit'];
+// В выписке по счёту клиента: дебет = приход на счёт, кредит = списание (вид с банка).
+const INCOME_COLUMNS = ['приход', 'доход', 'входящий остаток', 'поступление', 'дебет', 'debit'];
+const OUTCOME_COLUMNS = ['расход', 'списание', 'кредит', 'credit'];
 const DESC_COLUMNS = ['назначение', 'описание', 'операция', 'назначение платежа', 'description', 'details'];
 const COUNTERPARTY_COLUMNS = ['контрагент', 'получатель', 'плательщик', 'counterparty', 'party'];
 const DOC_NO_COLUMNS = ['номер документа', 'номер', 'document number', 'doc', 'doc_no'];
