@@ -39,6 +39,8 @@ PREV_LINK=
 [ -L "$DIST_LINK" ] && PREV_LINK=$(readlink "$DIST_LINK")
 export VITE_OUT_DIR="$BUILD_DIR"
 npm run build || { echo "❌ npm build failed"; exit 1; }
+chmod -R a+rX "$BUILD_DIR"
+chmod o+x "$SERVER_PATH" 2>/dev/null || true
 ln -sfn "$BUILD_DIR" "$DIST_LINK"
 [ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
 echo "✅ Frontend deployed → $DIST_LINK"
