@@ -71,17 +71,15 @@ sudo -u deploy git clone git@github.com:Tipo-Agency/nautilus.uchetgram.ru.git /v
 cd /var/www/nautilus.uchetgram.ru
 ```
 
-### 3.4. Sudoers для deploy (обязательно)
+### 3.4. Один раз убрать старый dist (если деплой падал с «permission denied»)
 
-Деплой запускается через `sudo ./scripts/deploy.sh`, иначе не очищается `dist/`. Один раз на сервере:
+Сборка идёт в новую папку и переключается через symlink, **sudo в деплое не нужен**. Если на сервере уже есть каталог `dist/`, созданный от root, один раз выполни:
 
 ```bash
-sudo visudo
-# Одна строка (путь — как у тебя SERVER_PATH, пользователь — как SERVER_USER):
-deploy ALL=(ALL) NOPASSWD: /var/www/nautilus.uchetgram.ru/scripts/deploy.sh
+sudo rm -rf /var/www/nautilus.uchetgram.ru/dist
 ```
 
-Если путь другой — подставь свой (например `/home/deploy/app/scripts/deploy.sh`).
+(подставь свой путь, как в SERVER_PATH). Дальнейшие деплои будут без sudo.
 
 ### 3.5. Node.js, npm, Python
 

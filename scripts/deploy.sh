@@ -14,10 +14,6 @@ echo "📁 Server path: $SERVER_PATH"
 # Переходим в директорию проекта
 cd "$SERVER_PATH" || { echo "❌ Failed to cd to $SERVER_PATH"; exit 1; }
 
-# Если скрипт запущен через sudo (DEPLOY_USER задан), работаем от root — тогда rm dist и сборка проходят
-RUN_AS_ROOT=
-[ -n "$DEPLOY_USER" ] && [ "$(id -u)" = "0" ] && RUN_AS_ROOT=1
-
 git config --global --add safe.directory "$SERVER_PATH" 2>/dev/null || true
 
 # 1. Обновляем код
@@ -27,17 +23,24 @@ git fetch origin || { echo "⚠️ git fetch failed"; exit 1; }
 git reset --hard origin/main || { echo "⚠️ git reset failed"; exit 1; }
 echo "✅ Code updated"
 
-# 2. Деплой фронтенда
+# 2. Деплой фронтенда (сборка в новую папку + symlink, без sudo и без удаления чужого dist)
 echo ""
 echo "🚀 Step 2: Deploying frontend..."
-if [ -d "dist" ]; then
-  if ! rm -rf dist; then
-    echo "❌ Cannot remove dist/. Run deploy with sudo (workflow: sudo -E ./scripts/deploy.sh) and add to sudoers: deploy ALL=(ALL) NOPASSWD: /bin/bash $SERVER_PATH/scripts/deploy.sh"
+if [ -e "dist" ] && [ ! -L "dist" ]; then
+  # dist — каталог (не symlink), возможно от root; без sudo не трогаем
+  if ! rm -rf dist 2>/dev/null; then
+    echo "❌ dist/ есть и не удаляется. Один раз на сервере выполни: sudo rm -rf $SERVER_PATH/dist"
     exit 1
   fi
 fi
 npm ci || { echo "❌ npm ci failed"; exit 1; }
+BUILD_DIR="dist.$(date +%s)"
+PREV_LINK=
+[ -L "dist" ] && PREV_LINK=$(readlink dist)
+export VITE_OUT_DIR="$BUILD_DIR"
 npm run build || { echo "❌ npm build failed"; exit 1; }
+ln -sfn "$BUILD_DIR" dist
+[ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
 echo "✅ Frontend deployed"
 
 # 3. Деплой Python API (если есть server/)
@@ -145,14 +148,6 @@ if systemctl is-active --quiet nginx 2>/dev/null; then
   echo "   Nginx: ✅ Running"
 else
   echo "   Nginx: ⚠️ Not running"
-fi
-
-# После деплоя под sudo возвращаем владельца deploy, чтобы не копить файлы от root
-if [ -n "$RUN_AS_ROOT" ] && [ -n "$DEPLOY_USER" ]; then
-  echo ""
-  echo "🔧 Fixing ownership for $DEPLOY_USER..."
-  chown -R "$DEPLOY_USER:$DEPLOY_USER" "$SERVER_PATH" || true
-  echo "✅ Done"
 fi
 
 exit 0

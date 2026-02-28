@@ -27,5 +27,4 @@ jobs:
             chmod +x scripts/deploy.sh
             export SERVER_PATH="${{ secrets.SERVER_PATH }}"
             export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
-            export DEPLOY_USER="${{ secrets.SERVER_USER }}"
-            sudo -E ./scripts/deploy.sh
+            ./scripts/deploy.sh
