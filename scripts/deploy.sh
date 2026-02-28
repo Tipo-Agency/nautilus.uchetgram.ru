@@ -38,7 +38,14 @@ BUILD_DIR="${DIST_LINK}.$(date +%s)"
 PREV_LINK=
 [ -L "$DIST_LINK" ] && PREV_LINK=$(readlink "$DIST_LINK")
 export VITE_OUT_DIR="$BUILD_DIR"
+# Чтобы серверный .env не перебивал outDir — явно пишем в .env.production.local
+echo "VITE_OUT_DIR=$BUILD_DIR" > .env.production.local
 npm run build || { echo "❌ npm build failed"; exit 1; }
+rm -f .env.production.local 2>/dev/null || true
+if [ ! -f "$BUILD_DIR/index.html" ]; then
+  echo "❌ Build broken: no index.html in $BUILD_DIR (only: $(ls -la "$BUILD_DIR" 2>/dev/null | head -20))"
+  exit 1
+fi
 chmod -R a+rX "$BUILD_DIR"
 chmod o+x "$SERVER_PATH" 2>/dev/null || true
 ln -sfn "$BUILD_DIR" "$DIST_LINK"
