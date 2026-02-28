@@ -44,10 +44,15 @@ npm run push
 
 ### 3.1. Подготовка директории
 
+Весь каталог проекта должен принадлежать пользователю `deploy`, иначе сборка (Vite) не сможет перезаписать `dist/`.
+
 ```bash
 sudo mkdir -p /var/www/nautilus.uchetgram.ru
-sudo chown deploy:deploy /var/www/nautilus.uchetgram.ru
+sudo chown -R deploy:deploy /var/www/nautilus.uchetgram.ru
 ```
+
+Если деплой уже падал с `EACCES` / "Cannot remove dist/", один раз выполни на сервере:  
+`sudo chown -R deploy:deploy /var/www/nautilus.uchetgram.ru`
 
 ### 3.2. SSH-ключ deploy → GitHub
 

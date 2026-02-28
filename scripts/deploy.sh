@@ -14,41 +14,33 @@ echo "📁 Server path: $SERVER_PATH"
 # Переходим в директорию проекта
 cd "$SERVER_PATH" || { echo "❌ Failed to cd to $SERVER_PATH"; exit 1; }
 
-# 1. Исправляем права на всю папку проекта
-echo ""
-echo "🔧 Step 1: Fixing ownership..."
-sudo chown -R "$USER:$USER" "$SERVER_PATH" || true
-sudo chmod -R u+rwX "$SERVER_PATH" || true
-if [ -d "$SERVER_PATH/.git" ]; then
-  sudo chown -R "$USER:$USER" "$SERVER_PATH/.git" || true
-  sudo chmod -R u+rwX "$SERVER_PATH/.git" || true
-fi
-git config --global --add safe.directory "$SERVER_PATH" || true
-echo "✅ Ownership fixed"
+git config --global --add safe.directory "$SERVER_PATH" 2>/dev/null || true
 
-# 2. Обновляем код (если еще не обновлен)
+# 1. Обновляем код
 echo ""
-echo "📥 Step 2: Updating code..."
-if ! git diff --quiet HEAD origin/main 2>/dev/null; then
-  git fetch origin || { echo "⚠️ git fetch failed, but continuing..."; }
-  git reset --hard origin/main || { echo "⚠️ git reset failed, but continuing..."; }
-  sudo chown -R "$USER:$USER" "$SERVER_PATH" || true
-  echo "✅ Code updated"
-else
-  echo "✅ Code already up to date"
-fi
+echo "📥 Step 1: Updating code..."
+git fetch origin || { echo "⚠️ git fetch failed"; exit 1; }
+git reset --hard origin/main || { echo "⚠️ git reset failed"; exit 1; }
+echo "✅ Code updated"
 
-# 3. Деплой фронтенда
+# 2. Деплой фронтенда
 echo ""
-echo "🚀 Step 3: Deploying frontend..."
+echo "🚀 Step 2: Deploying frontend..."
+# Очищаем dist без sudo — иначе Vite не сможет перезаписать (EACCES). Каталог должен принадлежать $USER.
+if [ -d "dist" ]; then
+  if ! rm -rf dist; then
+    echo "❌ Cannot remove dist/ (permission denied). On server run: sudo chown -R $USER:$USER $SERVER_PATH"
+    exit 1
+  fi
+fi
 npm ci || { echo "❌ npm ci failed"; exit 1; }
 npm run build || { echo "❌ npm build failed"; exit 1; }
 echo "✅ Frontend deployed"
 
-# 3.5. Деплой Python API (если есть server/)
+# 3. Деплой Python API (если есть server/)
 if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   echo ""
-  echo "🐍 Step 3.5: Deploying Python API..."
+  echo "🐍 Step 3: Deploying Python API..."
   (cd "$SERVER_PATH/server" && {
     [ -d "venv" ] || python3 -m venv venv
     . venv/bin/activate && pip install -q -r requirements.txt
@@ -65,10 +57,6 @@ echo "🤖 Step 4: Deploying Telegram bot..."
 if [ -d "telegram-bot" ]; then
   cd telegram-bot || { echo "❌ Failed to cd to telegram-bot"; exit 1; }
   
-  # Исправляем права
-  sudo chown -R "$USER:$USER" "$(pwd)" || true
-  sudo chmod -R u+rwX "$(pwd)" || true
-  
   # Обновляем .env с токеном
   if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
     echo "🔐 Updating .env file..."
@@ -80,8 +68,7 @@ if [ -d "telegram-bot" ]; then
     else
       echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN" >> .env
     fi
-    sudo chown "$USER:$USER" .env || true
-    chmod 600 .env || true
+    chmod 600 .env 2>/dev/null || true
     echo "✅ .env updated"
   fi
   
