@@ -113,6 +113,8 @@ WantedBy=multi-user.target
 
 Создай `.env` в `server/` с `DATABASE_URL` (обязательно PostgreSQL: `postgresql+asyncpg://user:pass@host:5432/db`, SQLite запрещён), `SECRET_KEY` и т.д. При деплое `.env` не перезаписывается.
 
+Если у пользователя `deploy` есть `sudo -u postgres`, при деплое автоматически выполняется `deploy/init_postgres_db.sh`: создаётся БД (если нет), назначается владелец БД и схемы `public`, выдаются права (GRANT). Иначе создай БД и пользователя вручную и один раз выполни от postgres: `ALTER DATABASE dbname OWNER TO app_user; ALTER SCHEMA public OWNER TO app_user; GRANT ALL ON SCHEMA public TO app_user;` (или скопируй логику из `deploy/init_postgres_db.sh`).
+
 ### 3.8. Первый ручной деплой (проверка)
 
 ```bash

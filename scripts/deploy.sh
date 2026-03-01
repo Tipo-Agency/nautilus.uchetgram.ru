@@ -54,11 +54,10 @@ ln -sfn "$BUILD_DIR" "$DIST_LINK"
 [ -n "$PREV_LINK" ] && [ -d "$PREV_LINK" ] && rm -rf "$PREV_LINK"
 echo "✅ Frontend deployed → $DIST_LINK"
 
-# 3. Деплой Python API: PostgreSQL обязателен, venv пересоздаётся, миграции, перезапуск
+# 3. Деплой Python API: PostgreSQL обязателен, инициализация БД (права), миграции, перезапуск только при успехе
 if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   echo ""
   echo "🐍 Step 3: Deploying Python API (PostgreSQL only, fresh venv)..."
-  # .env не перезаписываем — только проверяем наличие DATABASE_URL
   if [ ! -f "$SERVER_PATH/server/.env" ]; then
     echo "❌ server/.env not found. Create it with DATABASE_URL=postgresql+asyncpg://..."
     exit 1
@@ -68,9 +67,16 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     exit 1
   fi
   if grep -i 'sqlite' "$SERVER_PATH/server/.env" 2>/dev/null | grep -q '^DATABASE_URL='; then
-    echo "❌ DATABASE_URL must not be SQLite. Use PostgreSQL (postgresql+asyncpg://...)"
+    echo "❌ DATABASE_URL must not be SQLite. Use postgresql+asyncpg://..."
     exit 1
   fi
+  export DATABASE_URL=$(grep '^DATABASE_URL=' "$SERVER_PATH/server/.env" | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//")
+  PARSED=$(python3 deploy/parse_db_url.py 2>/dev/null) || {
+    echo "❌ DATABASE_URL must be postgresql+asyncpg://... (invalid or not PostgreSQL)"
+    python3 deploy/parse_db_url.py 2>&1
+    exit 1
+  }
+  eval "$PARSED"
   (cd "$SERVER_PATH/server" && {
     rm -rf venv
     python3 -m venv venv
@@ -80,10 +86,35 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     echo "❌ asyncpg or alembic not installed. Check requirements.txt."
     exit 1
   }
-  (cd "$SERVER_PATH/server" && . venv/bin/activate && alembic upgrade head) || {
-    echo "❌ alembic upgrade head failed. Check PostgreSQL is running and DATABASE_URL in server/.env is correct."
+  # Инициализация БД: создание (если нет), владелец, права на public — только если есть sudo -u postgres
+  if sudo -u postgres true 2>/dev/null; then
+    (sudo -u postgres env PGUSER="$PGUSER" PGHOST="$PGHOST" PGPORT="$PGPORT" PGDATABASE="$PGDATABASE" bash "$SERVER_PATH/deploy/init_postgres_db.sh") 2>&1 || {
+      echo "⚠️ init_postgres_db.sh failed or skipped (see above). Continuing; alembic may fail if DB/rights are wrong."
+    }
+  else
+    echo "⚠️ sudo -u postgres not available; skipping DB init. Ensure DB and schema public belong to app user."
+  fi
+  # Проверка подключения к БД перед миграциями
+  (cd "$SERVER_PATH/server" && . venv/bin/activate && python3 -c "
+import asyncio
+from app.database import engine
+async def check():
+    async with engine.connect() as conn:
+        pass
+asyncio.run(check())
+" 2>&1) || {
+    echo "❌ Cannot connect to PostgreSQL. Full error above. Fix DATABASE_URL and DB user rights."
     exit 1
   }
+  # Миграции: полный вывод при ошибке; при падении — не перезапускаем сервис
+  ALEMBIC_OUTPUT=$(cd "$SERVER_PATH/server" && . venv/bin/activate && alembic upgrade head 2>&1)
+  ALEMBIC_EXIT=$?
+  if [ $ALEMBIC_EXIT -ne 0 ]; then
+    echo "❌ alembic upgrade head failed (exit $ALEMBIC_EXIT). Full output:"
+    echo "$ALEMBIC_OUTPUT"
+    exit 1
+  fi
+  # Только после успешных миграций — обновляем unit и перезапускаем сервис
   if [ -f "deploy/nautilus-api.service" ]; then
     sed "s|__SERVER_PATH__|$SERVER_PATH|g" deploy/nautilus-api.service | sudo tee /etc/systemd/system/nautilus-api.service > /dev/null 2>&1
     sudo systemctl daemon-reload 2>/dev/null || true
@@ -95,7 +126,7 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     sudo journalctl -u nautilus-api.service -n 30 --no-pager 2>/dev/null || true
     exit 1
   fi
-  echo "✅ Python API updated (venv recreated, migrations applied, nautilus-api running)"
+  echo "✅ Python API updated (venv recreated, DB init/migrations OK, nautilus-api running)"
 fi
 
 # 4. Деплой Telegram бота
