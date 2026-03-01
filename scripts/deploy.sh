@@ -77,6 +77,13 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     exit 1
   }
   eval "$PARSED"
+  # .pg_env for run_db_init_as_postgres.sh (no password; init uses postgres superuser)
+  {
+    echo "export PGUSER='$(printf '%s' "$PGUSER" | sed "s/'/'\\\\''/g")'"
+    echo "export PGHOST='$(printf '%s' "$PGHOST" | sed "s/'/'\\\\''/g")'"
+    echo "export PGPORT='$(printf '%s' "$PGPORT" | sed "s/'/'\\\\''/g")'"
+    echo "export PGDATABASE='$(printf '%s' "$PGDATABASE" | sed "s/'/'\\\\''/g")'"
+  } > "$SERVER_PATH/deploy/.pg_env"
   (cd "$SERVER_PATH/server" && {
     rm -rf venv 2>/dev/null
     if [ -d venv ]; then
@@ -100,13 +107,11 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     echo "❌ asyncpg or alembic not installed. Check requirements.txt."
     exit 1
   }
-  # Инициализация БД: создание (если нет), владелец, права на public — только если есть sudo -u postgres
-  if sudo -u postgres true 2>/dev/null; then
-    (sudo -u postgres env PGUSER="$PGUSER" PGHOST="$PGHOST" PGPORT="$PGPORT" PGDATABASE="$PGDATABASE" bash "$SERVER_PATH/deploy/init_postgres_db.sh") 2>&1 || {
-      echo "⚠️ init_postgres_db.sh failed or skipped (see above). Continuing; alembic may fail if DB/rights are wrong."
-    }
+  # Инициализация БД: создание (если нет), владелец, права на public (через wrapper по sudoers)
+  if sudo -n -u postgres "$SERVER_PATH/deploy/run_db_init_as_postgres.sh" 2>&1; then
+    echo "✅ DB init (schema public) OK"
   else
-    echo "⚠️ sudo -u postgres not available; skipping DB init. Ensure DB and schema public belong to app user."
+    echo "⚠️ DB init skipped or failed (add run_db_init_as_postgres.sh to sudoers for full autodeploy). Alembic may fail if schema public not owned by app user."
   fi
   # Проверка подключения к БД перед миграциями
   (cd "$SERVER_PATH/server" && . venv/bin/activate && python3 -c "

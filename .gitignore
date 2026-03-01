@@ -29,6 +29,7 @@ server/venv
 .env.local
 .env.*.local
 telegram-bot/.env
+deploy/.pg_env
 
 # Auto Claude data directory
 .auto-claude/
