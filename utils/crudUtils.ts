@@ -45,6 +45,7 @@ export function findItemById<T extends CrudItem>(items: T[], id: string): T | un
 
 /**
  * Создает функцию сохранения элемента с уведомлением и синхронизацией
+ * (fire-and-forget API: при ошибке сети пользователь всё равно видит «сохранено»)
  * @param setter - функция для обновления состояния
  * @param apiUpdate - функция для обновления через API
  * @param notification - функция для показа уведомления
@@ -53,26 +54,64 @@ export function findItemById<T extends CrudItem>(items: T[], id: string): T | un
  */
 export function createSaveHandler<T extends CrudItem>(
   setter: (items: T[]) => void,
-  apiUpdate: (items: T[]) => void,
+  apiUpdate: (items: T[]) => void | Promise<unknown>,
   notification: (msg: string) => void,
   successMessage: string
 ) {
   return (item: T) => {
     setter(prevItems => {
       const now = new Date().toISOString();
-      // Автоматически устанавливаем updatedAt при сохранении
       const itemWithTimestamp: T = {
         ...item,
         updatedAt: now,
-        // Если это новый элемент (нет в массиве), устанавливаем createdAt
         createdAt: item.createdAt || (prevItems.find(x => x.id === item.id) ? undefined : now)
       } as T;
-      
       const updated = saveItem(prevItems, itemWithTimestamp);
-      apiUpdate(updated);
+      Promise.resolve(apiUpdate(updated)).catch(err => {
+        console.error('Ошибка сохранения:', err);
+        notification('Ошибка сохранения. Проверьте сеть и backend.');
+      });
       notification(successMessage);
       return updated;
     });
+  };
+}
+
+/**
+ * Создает асинхронную функцию сохранения: сначала отправка в API, при успехе — обновление состояния.
+ * Если API падает — состояние не меняется, показывается ошибка (БД как единственный источник истины).
+ * @param getState - функция, возвращающая текущий массив (например () => ref.current)
+ * @param setter - функция для обновления состояния
+ * @param apiUpdate - функция для обновления через API (возвращает Promise)
+ * @param notification - функция для показа уведомления
+ * @param successMessage - сообщение об успехе
+ * @param errorMessage - сообщение при ошибке
+ */
+export function createSaveHandlerAsync<T extends CrudItem>(
+  getState: () => T[],
+  setter: (items: T[]) => void,
+  apiUpdate: (items: T[]) => Promise<unknown>,
+  notification: (msg: string) => void,
+  successMessage: string,
+  errorMessage: string = 'Ошибка сохранения'
+) {
+  return async (item: T) => {
+    const now = new Date().toISOString();
+    const current = getState();
+    const itemWithTimestamp: T = {
+      ...item,
+      updatedAt: now,
+      createdAt: item.createdAt || (current.find(x => x.id === item.id) ? undefined : now)
+    } as T;
+    const updated = saveItem(current, itemWithTimestamp);
+    try {
+      await apiUpdate(updated);
+      setter(updated);
+      notification(successMessage);
+    } catch (err) {
+      console.error('Save failed:', err);
+      notification(errorMessage);
+    }
   };
 }
 

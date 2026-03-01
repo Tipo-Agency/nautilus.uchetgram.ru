@@ -1,8 +1,7 @@
-
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Department, FinanceCategory, Fund, FinancePlan, PurchaseRequest, FinancialPlanDocument, FinancialPlanning, BankStatement, IncomeReport } from '../../../types';
 import { api } from '../../../backend/api';
-import { createSaveHandler, createDeleteHandler } from '../../../utils/crudUtils';
+import { createSaveHandler, createSaveHandlerAsync, createDeleteHandler } from '../../../utils/crudUtils';
 import { NOTIFICATION_MESSAGES } from '../../../constants/messages';
 
 export const useFinanceLogic = (showNotification: (msg: string) => void) => {
@@ -15,6 +14,10 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
   const [financialPlannings, setFinancialPlannings] = useState<FinancialPlanning[]>([]);
   const [bankStatements, setBankStatements] = useState<BankStatement[]>([]);
   const [incomeReports, setIncomeReports] = useState<IncomeReport[]>([]);
+  const bankStatementsRef = useRef<BankStatement[]>([]);
+  const incomeReportsRef = useRef<IncomeReport[]>([]);
+  useEffect(() => { bankStatementsRef.current = bankStatements; }, [bankStatements]);
+  useEffect(() => { incomeReportsRef.current = incomeReports; }, [incomeReports]);
 
   // Departments
   const saveDepartment = createSaveHandler(
@@ -114,20 +117,24 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
     NOTIFICATION_MESSAGES.FINANCIAL_PLANNING_DELETED
   );
 
-  // Bank Statements
-  const saveBankStatements = createSaveHandler(
+  // Bank Statements — сохраняем через API, при ошибке не обновляем стейт (БД = источник истины)
+  const saveBankStatements = createSaveHandlerAsync(
+    () => bankStatementsRef.current,
     setBankStatements,
-    api.finance.updateBankStatements,
+    (payload) => api.finance.updateBankStatements(payload),
     showNotification,
-    'Выписки сохранены'
+    'Выписки сохранены',
+    'Не удалось сохранить выписки. Проверьте сеть и backend.'
   );
 
-  // Income Reports
-  const saveIncomeReports = createSaveHandler(
+  // Income Reports — то же
+  const saveIncomeReports = createSaveHandlerAsync(
+    () => incomeReportsRef.current,
     setIncomeReports,
-    api.finance.updateIncomeReports,
+    (payload) => api.finance.updateIncomeReports(payload),
     showNotification,
-    'Справка о доходах сохранена'
+    'Справка о доходах сохранена',
+    'Не удалось сохранить справку о доходах.'
   );
 
   return {
