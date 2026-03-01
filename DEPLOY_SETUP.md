@@ -89,6 +89,10 @@ root /var/www/nautilus.uchetgram.ru/dist.live;
 # Python 3.9+
 ```
 
+### 3.6. Если деплой падает: venv и БД
+
+- **venv: "Cannot remove server/venv"** — каталог `server/venv` мог быть создан от root. Один раз на сервере: `sudo chown -R deploy:deploy /var/www/nautilus.uchetgram.ru/server` (или `$SERVER_PATH/server`). Либо разрешить deploy выполнять `sudo rm -rf .../server/venv` через sudoers.
+- **alembic: "permission denied for schema public"** — скрипт деплоя выведет подсказку с готовой командой. Выполни её один раз на сервере от postgres: `sudo -u postgres env PGUSER=... PGHOST=... PGPORT=... PGDATABASE=... bash $SERVER_PATH/deploy/init_postgres_db.sh` (значения подставь из вывода или из `.env` / DATABASE_URL).
 
 ### 3.7. Systemd-сервис для Python API (опционально)
 

@@ -78,7 +78,11 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   }
   eval "$PARSED"
   (cd "$SERVER_PATH/server" && {
-    rm -rf venv
+    rm -rf venv 2>/dev/null
+    if [ -d venv ]; then
+      echo "venv not removed (permission?), trying sudo rm -rf venv..."
+      sudo rm -rf venv || { echo "❌ Cannot remove server/venv. On server run: sudo chown -R deploy:deploy $SERVER_PATH/server"; exit 1; }
+    fi
     python3 -m venv venv
     . venv/bin/activate && pip install -q -r requirements.txt
   }) || { echo "❌ Python API venv/pip failed"; exit 1; }
@@ -112,6 +116,10 @@ asyncio.run(check())
   if [ $ALEMBIC_EXIT -ne 0 ]; then
     echo "❌ alembic upgrade head failed (exit $ALEMBIC_EXIT). Full output:"
     echo "$ALEMBIC_OUTPUT"
+    echo ""
+    if echo "$ALEMBIC_OUTPUT" | grep -q "permission denied for schema public"; then
+      echo "💡 Fix: on server run once as postgres: sudo -u postgres env PGUSER=$PGUSER PGHOST=$PGHOST PGPORT=$PGPORT PGDATABASE=$PGDATABASE bash $SERVER_PATH/deploy/init_postgres_db.sh"
+    fi
     exit 1
   fi
   # Только после успешных миграций — обновляем unit и перезапускаем сервис
