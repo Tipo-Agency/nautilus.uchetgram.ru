@@ -140,9 +140,9 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
     }
   };
 
-  const lineStableId = (deptId: string, date: string, docNo: string | undefined, amount: number, desc: string) => {
-    const key = docNo && docNo.trim() ? docNo.trim() : `h${(date + amount + (desc || '')).split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0).toString(36).slice(-10)}`;
-    return `txn-${deptId}-${date}-${key}`;
+  const lineStableId = (deptId: string, date: string, docNo: string | undefined, amount: number, desc: string, index: number) => {
+    const base = docNo && docNo.trim() ? docNo.trim() : `h${(date + amount + (desc || '')).split('').reduce((a, b) => ((a << 5) - a + b.charCodeAt(0)) | 0, 0).toString(36).slice(-10)}`;
+    return `txn-${deptId}-${date}-${base}-${index}`;
   };
 
   const confirmUpload = () => {
@@ -151,8 +151,8 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
     const stmtId = `stmt-dept-${uploadDepartmentId}`;
     // Полная замена строк выписки из файла (без слияния со старыми), иначе при повторной загрузке
     // старая ошибочная строка +900 и новая -900 дают дубли и неверные комиссии
-    const lines: BankStatementLine[] = result.lines.map(l => {
-      const id = lineStableId(uploadDepartmentId, l.date, l.documentNumber, l.amount, l.description || '');
+    const lines: BankStatementLine[] = result.lines.map((l, idx) => {
+      const id = lineStableId(uploadDepartmentId, l.date, l.documentNumber, l.amount, l.description || '', idx);
       return { ...l, id, statementId: stmtId };
     });
     let totalIncome = 0;
