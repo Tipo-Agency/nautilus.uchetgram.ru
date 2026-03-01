@@ -10,10 +10,14 @@ fi
 APP_USER="$PGUSER"
 PGHOST="${PGHOST:-localhost}"
 PGPORT="${PGPORT:-5432}"
-# Все подключения — только как postgres, чтобы не спрашивало пароль приложения
+# Подключаемся как postgres. Локально (localhost) — через Unix-сокет (peer, без пароля)
 export PGUSER=postgres
 export PGPASSWORD=""
-PSQL_CMD="psql -h $PGHOST -p $PGPORT -d postgres -v ON_ERROR_STOP=1"
+if [ -z "$PGHOST" ] || [ "$PGHOST" = "localhost" ] || [ "$PGHOST" = "127.0.0.1" ]; then
+  PSQL_CMD="psql -d postgres -v ON_ERROR_STOP=1"
+else
+  PSQL_CMD="psql -h $PGHOST -p $PGPORT -d postgres -v ON_ERROR_STOP=1"
+fi
 # Проверяем существование базы
 EXISTS=$($PSQL_CMD -tAc "SELECT 1 FROM pg_database WHERE datname = '$PGDATABASE';" 2>/dev/null || echo "")
 if [ "$EXISTS" != "1" ]; then
