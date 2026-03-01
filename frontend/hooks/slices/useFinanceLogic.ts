@@ -123,8 +123,8 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
     setBankStatements,
     (payload) => api.finance.updateBankStatements(payload),
     showNotification,
-    'Выписки сохранены',
-    'Не удалось сохранить выписки. Проверьте сеть и backend.'
+    'Баланс (выписки) сохранён',
+    'Не удалось сохранить. Проверьте сеть и backend.'
   );
 
   // Income Reports — то же

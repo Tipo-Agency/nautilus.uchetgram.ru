@@ -1554,19 +1554,21 @@ const FinanceView: React.FC<FinanceViewProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              window.dispatchEvent(new CustomEvent('incomeReportUploadExcel'));
                               setCreateDropdownOpen(false);
+                              setActiveTab('income-report');
+                              setTimeout(() => window.dispatchEvent(new CustomEvent('incomeReportUploadExcel')), 100);
                             }}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
                           >
                             <Upload size={16} className="text-gray-500 dark:text-gray-400 shrink-0" />
-                            Загрузить выписку (Excel)
+                            Загрузить выписку в баланс (Excel)
                           </button>
                           <button
                             type="button"
                             onClick={() => {
-                              window.dispatchEvent(new CustomEvent('incomeReportCreateReport'));
                               setCreateDropdownOpen(false);
+                              setActiveTab('income-report');
+                              setTimeout(() => window.dispatchEvent(new CustomEvent('incomeReportCreateReport')), 100);
                             }}
                             className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#333] transition-colors"
                           >

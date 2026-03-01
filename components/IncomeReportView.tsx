@@ -4,7 +4,7 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import { BankStatement, BankStatementLine, IncomeReport, IncomeFrom1C, User } from '../types';
-import { FileText, Check, DollarSign, ChevronRight, X, RefreshCw, AlertTriangle, Printer } from 'lucide-react';
+import { FileText, Check, DollarSign, ChevronRight, ChevronLeft, X, RefreshCw, AlertTriangle, Printer } from 'lucide-react';
 import { parseBankStatementExcel, type ParseResult } from '../utils/bankStatementParser';
 import { Button, Card, DateInput } from './ui';
 import { TaskSelect } from './TaskSelect';
@@ -64,9 +64,15 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
   const [createPeriodTo, setCreatePeriodTo] = useState(today);
   const [createManualAmount, setCreateManualAmount] = useState('');
   const [expandedStatementId, setExpandedStatementId] = useState<string | null>(null);
+  const [balanceDepartmentId, setBalanceDepartmentId] = useState<string | null>(null);
+  const [balanceLineType, setBalanceLineType] = useState<'income' | 'outcome'>('income');
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const [reconPeriodFrom, setReconPeriodFrom] = useState(today);
   const [reconPeriodTo, setReconPeriodTo] = useState(today);
+  const [reportFilterDateFrom, setReportFilterDateFrom] = useState('');
+  const [reportFilterDateTo, setReportFilterDateTo] = useState('');
+  const [reportFilterDepartmentId, setReportFilterDepartmentId] = useState('');
+  const [reportShowOnlyLatestPerDept, setReportShowOnlyLatestPerDept] = useState(true);
   const [createDepartmentId, setCreateDepartmentId] = useState(departments[0]?.id || '');
   const [uploadDepartmentId, setUploadDepartmentId] = useState(departments[0]?.id || '');
   const [uploadPending, setUploadPending] = useState<{ result: ParseResult; stmtId: string } | null>(null);
@@ -174,7 +180,7 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
     const amount = fromBank + manual;
 
     if (amount <= 0) {
-      alert('Загрузите выписку для подразделения или введите сумму вручную');
+      alert('Загрузите выписку по балансу для подразделения или введите сумму вручную');
       return;
     }
 
@@ -268,6 +274,14 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Скрытый input для загрузки выписки — всегда в DOM, чтобы кнопка «Загрузить выписку» работала с любой вкладки (Баланс, Справки, Сверка) */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
       {/* Переключатель режима: не вкладки, а кнопки-секции */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -276,7 +290,7 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
             viewMode === 'statements' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-[#252525] text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-[#333]'
           }`}
         >
-          Выписки
+          Баланс
         </button>
         <button
           onClick={() => setViewMode('reports')}
@@ -300,70 +314,106 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
 
       {viewMode === 'statements' && (
         <div className="space-y-4">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
           {uploading && <p className="text-sm text-gray-500 dark:text-gray-400">Загрузка выписки...</p>}
-          {bankStatements.length === 0 ? (
+          {balanceDepartmentId != null ? (
+            (() => {
+              const dept = departments.find(d => d.id === balanceDepartmentId);
+              const stmt = bankStatements.find(s => s.departmentId === balanceDepartmentId && s.id === departmentStatementId(balanceDepartmentId));
+              const lines = (stmt?.lines || []).filter(l => l.type === balanceLineType).sort((a, b) => a.date.localeCompare(b.date));
+              const byDate = lines.reduce<Record<string, typeof lines>>((acc, l) => {
+                if (!acc[l.date]) acc[l.date] = [];
+                acc[l.date].push(l);
+                return acc;
+              }, {});
+              const dates = Object.keys(byDate).sort();
+              return (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setBalanceDepartmentId(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] text-gray-600 dark:text-gray-400">
+                      <ChevronLeft size={20} />
+                    </button>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Баланс: {dept?.name || '—'}</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setBalanceLineType('income')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium ${balanceLineType === 'income' ? 'bg-green-600 text-white' : 'bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-400'}`}
+                    >
+                      Поступления
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBalanceLineType('outcome')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium ${balanceLineType === 'outcome' ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-[#252525] text-gray-600 dark:text-gray-400'}`}
+                    >
+                      Расходы
+                    </button>
+                  </div>
+                  <div className="border border-gray-200 dark:border-[#333] rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 dark:bg-[#202020]">
+                        <tr>
+                          <th className="text-left px-4 py-2 text-gray-600 dark:text-gray-400">Дата</th>
+                          <th className="text-right px-4 py-2 text-gray-600 dark:text-gray-400">Сумма</th>
+                          <th className="text-left px-4 py-2 text-gray-600 dark:text-gray-400">Назначение</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 dark:divide-[#333]">
+                        {dates.length === 0 ? (
+                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Нет операций</td></tr>
+                        ) : (
+                          dates.flatMap(date => (byDate[date] || []).map(line => (
+                            <tr key={line.id} className="hover:bg-gray-50 dark:hover:bg-[#252525]">
+                              <td className="px-4 py-2 text-gray-900 dark:text-white">{line.date}</td>
+                              <td className={`px-4 py-2 text-right font-medium ${balanceLineType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                {Math.abs(line.amount).toLocaleString('ru-RU')} {CURRENCY}
+                              </td>
+                              <td className="px-4 py-2 text-gray-600 dark:text-gray-300 truncate max-w-md" title={line.description || line.counterparty || ''}>{line.description || line.counterparty || '—'}</td>
+                            </tr>
+                          )))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()
+          ) : bankStatements.length === 0 ? (
             <Card className="p-12 text-center">
               <FileText size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Нет выписок. Загрузите Excel-файл выписки из банка.</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">Нет данных по балансу. Загрузите Excel-файл выписки из банка.</p>
               <p className="text-xs text-gray-400 mt-2">Поддерживаются колонки: дата, сумма, приход, расход, назначение, контрагент</p>
             </Card>
           ) : (
             <div className="space-y-2">
-              {bankStatements.map(stmt => (
-                <Card key={stmt.id} padding="md" className="overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedStatementId(expandedStatementId === stmt.id ? null : stmt.id)}
-                    className="w-full flex items-center justify-between text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText size={20} className="text-gray-500" />
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{stmt.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {stmt.periodFrom} — {stmt.periodTo} · Приход: {stmt.totalIncome?.toLocaleString()} {CURRENCY}
-                          {stmt.departmentId && (
-                            <> · {departments.find(d => d.id === stmt.departmentId)?.name || '—'}</>
-                          )}
+              {departments.map(dept => {
+                const stmt = bankStatements.find(s => s.departmentId === dept.id && s.id === departmentStatementId(dept.id));
+                const totalIncome = stmt?.totalIncome ?? 0;
+                const totalOutcome = typeof stmt?.totalOutcome === 'number' ? stmt.totalOutcome : parseFloat(String(stmt?.totalOutcome || '0')) || 0;
+                const periodFrom = stmt?.periodFrom || '—';
+                const periodTo = stmt?.periodTo || '—';
+                return (
+                  <Card key={dept.id} padding="md" className="overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setBalanceDepartmentId(dept.id)}
+                      className="w-full flex items-center justify-between text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FileText size={20} className="text-gray-500" />
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{dept.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {periodFrom} — {periodTo} · Поступления: {totalIncome.toLocaleString('ru-RU')} {CURRENCY} · Расходы: {totalOutcome.toLocaleString('ru-RU')} {CURRENCY}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <ChevronRight size={18} className={`text-gray-400 transition-transform ${expandedStatementId === stmt.id ? 'rotate-90' : ''}`} />
-                  </button>
-                  {expandedStatementId === stmt.id && stmt.lines && (
-                    <div className="mt-4 border-t border-gray-100 dark:border-[#333] pt-4 max-h-64 overflow-y-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-gray-500">
-                            <th className="text-left py-1">Дата</th>
-                            <th className="text-left py-1">Сумма</th>
-                            <th className="text-left py-1">Назначение</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                            {(stmt.lines || []).slice(0, 50).map(line => (
-                            <tr key={line.id} className="border-t border-gray-50 dark:border-[#333]">
-                              <td className="py-1">{line.date}</td>
-                              <td className={`py-1 ${line.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>{line.amount.toLocaleString()}</td>
-                              <td className="py-1 truncate max-w-[200px]">{line.description || line.counterparty || '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {(stmt.lines || []).length > 50 && (
-                        <p className="text-xs text-gray-400 mt-2">Показано 50 из {(stmt.lines || []).length}</p>
-                      )}
-                    </div>
-                  )}
-                </Card>
-              ))}
+                      <ChevronRight size={18} className="text-gray-400" />
+                    </button>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -438,38 +488,80 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
       )}
 
       {viewMode === 'reports' && (
-        <div className="space-y-2">
-          {incomeReports.length === 0 ? (
-            <Card className="p-12 text-center">
-              <DollarSign size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-              <p className="text-gray-500 dark:text-gray-400 text-sm">Нет сформированных справок</p>
-            </Card>
-          ) : (
-            incomeReports.map(r => (
-              <Card
-                key={r.id}
-                padding="md"
-                className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
-                onClick={() => setSelectedReportId(r.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900 dark:text-white">Справка за {r.periodFrom} — {r.periodTo}</div>
-                    <div className="text-sm text-gray-500">
-                      {r.source === 'manual' ? 'Вручную' : 'По выпискам'}
-                      {r.departmentId && (
-                        <> · {departments.find(d => d.id === r.departmentId)?.name || '—'}</>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="font-bold text-gray-900 dark:text-white">{r.amount.toLocaleString()} {CURRENCY}</div>
-                    <ChevronRight size={18} className="text-gray-400" />
-                  </div>
-                </div>
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-4 items-end p-4 bg-gray-50 dark:bg-[#252525] rounded-xl border border-gray-200 dark:border-[#333]">
+            <DateInput label="Дата с" value={reportFilterDateFrom} onChange={setReportFilterDateFrom} max={reportFilterDateTo || undefined} />
+            <DateInput label="Дата по" value={reportFilterDateTo} onChange={setReportFilterDateTo} min={reportFilterDateFrom || undefined} />
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Подразделение</label>
+              <TaskSelect
+                value={reportFilterDepartmentId}
+                onChange={setReportFilterDepartmentId}
+                options={[
+                  { value: '', label: 'Все' },
+                  ...departments.map(d => ({ value: d.id, label: d.name }))
+                ]}
+              />
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={reportShowOnlyLatestPerDept}
+                onChange={e => setReportShowOnlyLatestPerDept(e.target.checked)}
+                className="rounded border-gray-300 dark:border-gray-600"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Только последние по подразделениям</span>
+            </label>
+          </div>
+          {(() => {
+            let visible = incomeReports;
+            if (reportFilterDateFrom) visible = visible.filter(r => r.periodTo >= reportFilterDateFrom);
+            if (reportFilterDateTo) visible = visible.filter(r => r.periodFrom <= reportFilterDateTo);
+            if (reportFilterDepartmentId) visible = visible.filter(r => r.departmentId === reportFilterDepartmentId);
+            if (reportShowOnlyLatestPerDept && visible.length > 0) {
+              const byDept = visible.reduce<Record<string, IncomeReport>>((acc, r) => {
+                const key = r.departmentId || '__no_dept__';
+                const cur = acc[key];
+                if (!cur || (r.periodFrom > cur.periodFrom) || (r.periodFrom === cur.periodFrom && (r.createdAt || '') > (cur.createdAt || '')))
+                  acc[key] = r;
+                return acc;
+              }, {});
+              visible = Object.values(byDept);
+            }
+            return incomeReports.length === 0 ? (
+              <Card className="p-12 text-center">
+                <DollarSign size={48} className="mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Нет сформированных справок</p>
               </Card>
-            ))
-          )}
+            ) : (
+              <div className="space-y-2">
+                {visible.map(r => (
+                  <Card
+                    key={r.id}
+                    padding="md"
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                    onClick={() => setSelectedReportId(r.id)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-white">Справка за {r.periodFrom} — {r.periodTo}</div>
+                        <div className="text-sm text-gray-500">
+                          {r.source === 'manual' ? 'Вручную' : 'По выпискам'}
+                          {r.departmentId && (
+                            <> · {departments.find(d => d.id === r.departmentId)?.name || '—'}</>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-bold text-gray-900 dark:text-white">{r.amount.toLocaleString()} {CURRENCY}</div>
+                        <ChevronRight size={18} className="text-gray-400" />
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -482,11 +574,15 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
           : (r.departmentId ? bankStatements.filter(s => s.id === departmentStatementId(r.departmentId!)) : []);
         let commissionAmount = 0;
         let totalOutcome = 0;
+        const isCommission = (desc: string | undefined) => {
+          const d = (desc || '').toLowerCase();
+          return d.includes('комиссия') || d.includes('ком.') || /ком\s*\./i.test(d);
+        };
         stmts.forEach(s => {
           (s.lines || []).filter(l => l.date >= r.periodFrom && l.date <= r.periodTo).forEach(l => {
             if (l.type === 'outcome') {
               totalOutcome += Math.abs(l.amount);
-              if ((l.description || '').toLowerCase().includes('комиссия')) commissionAmount += Math.abs(l.amount);
+              if (isCommission(l.description)) commissionAmount += Math.abs(l.amount);
             }
           });
         });
@@ -554,7 +650,7 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setUploadPending(null)}>
           <div className="bg-white dark:bg-[#252525] rounded-xl shadow-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-100 dark:border-[#333] flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 dark:text-white">Выписка загружена</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white">Выписка загружена в баланс</h3>
               <button onClick={() => setUploadPending(null)} className="p-1 text-gray-400 hover:text-gray-600"><X size={20} /></button>
             </div>
             <div className="p-4 space-y-4">
@@ -575,7 +671,7 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => setUploadPending(null)} size="md">Отмена</Button>
                 <Button onClick={confirmUpload} size="md" disabled={!uploadDepartmentId}>
-                  <Check size={18} /> Сохранить выписку
+                  <Check size={18} /> Сохранить в баланс
                 </Button>
               </div>
             </div>
