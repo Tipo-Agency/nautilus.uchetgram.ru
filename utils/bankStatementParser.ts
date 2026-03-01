@@ -50,6 +50,19 @@ function toDateStr(val: unknown): string {
   return '';
 }
 
+/** По тексту назначения/контрагента определяем, что это комиссия/расход (для выписок с одной колонкой «Сумма») */
+function looksLikeCommissionOrExpense(desc: string, counterparty: string): boolean {
+  const d = desc.toLowerCase();
+  const c = counterparty.toLowerCase();
+  const t = d + ' ' + c;
+  return (
+    t.includes('комиссия') || t.includes('ком.') || /ком\s*\./i.test(t) ||
+    (t.includes('прием') && (t.includes('пересч') || t.includes('нал') || t.includes('наличн'))) ||
+    t.includes('зачисление наличных') || t.includes('пересч.нал') || t.includes('ком.за') ||
+    t.includes('списание') || t.includes('банковский ордер')
+  );
+}
+
 export interface ParseResult {
   lines: BankStatementLine[];
   totalIncome: number;
@@ -126,6 +139,8 @@ export function parseBankStatementExcel(
           if (isEmpty) break;
 
           const dateStr = cols.date >= 0 ? toDateStr(row[cols.date]) : '';
+          const desc = cols.desc >= 0 ? String(row[cols.desc] ?? '') : '';
+          const counterparty = cols.counterparty >= 0 ? String(row[cols.counterparty] ?? '') : '';
           let amount = cols.amount >= 0 ? safeNumber(row[cols.amount]) : 0;
           const incomeVal = cols.income >= 0 ? safeNumber(row[cols.income]) : 0;
           const outcomeVal = cols.outcome >= 0 ? safeNumber(row[cols.outcome]) : 0;
@@ -136,6 +151,9 @@ export function parseBankStatementExcel(
             amount = incomeVal;
           } else if (cols.outcome >= 0) {
             amount = -outcomeVal;
+          } else if (cols.amount >= 0 && amount > 0 && looksLikeCommissionOrExpense(desc, counterparty)) {
+            // Одна колонка «Сумма» без приход/расход — по тексту считаем комиссию/расход
+            amount = -Math.abs(amount);
           }
 
           if (amount === 0 && incomeVal === 0 && outcomeVal === 0) continue;
@@ -147,8 +165,6 @@ export function parseBankStatementExcel(
           if (dateStr && (!minDate || dateStr < minDate)) minDate = dateStr;
           if (dateStr && (!maxDate || dateStr > maxDate)) maxDate = dateStr;
 
-          const desc = cols.desc >= 0 ? String(row[cols.desc] ?? '') : '';
-          const counterparty = cols.counterparty >= 0 ? String(row[cols.counterparty] ?? '') : '';
           const docNo = cols.docNo >= 0 ? String(row[cols.docNo] ?? '') : '';
 
           lines.push({
