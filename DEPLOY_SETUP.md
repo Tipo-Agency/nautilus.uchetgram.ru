@@ -91,7 +91,7 @@ root /var/www/nautilus.uchetgram.ru/dist.live;
 
 ### 3.6. Один раз: sudoers (чтобы автодеплой проходил без ручных шагов)
 
-В `deploy/sudoers.deploy` **две строки**: (1) `chown` для `.../server` — чтобы скрипт мог пересоздать venv; (2) запуск `run_db_init_as_postgres.sh` от postgres — чтобы инициализация БД (схема `public`, владелец) выполнялась при деплое без пароля.
+В `deploy/sudoers.deploy` **две строки**: (1) `chown -R deploy:deploy` на **весь каталог проекта** (чтобы при EACCES на `node_modules` или `server/venv` деплой мог сам поправить владельца); (2) запуск `run_db_init_as_postgres.sh` от postgres — инициализация БД при деплое без пароля.
 
 Сделай **один раз** на сервере:
 ```bash

@@ -2,6 +2,6 @@
 # Example: sudo cp deploy/sudoers.deploy /etc/sudoers.d/deploy
 #          sudo sed -i 's|/var/www/nautilus.uchetgram.ru|YOUR_SERVER_PATH|g' /etc/sudoers.d/deploy
 #          sudo chmod 440 /etc/sudoers.d/deploy
-# Then deploy can fix server dir ownership and run DB init as postgres without password.
-deploy ALL=(ALL) NOPASSWD: /usr/bin/chown -R deploy\:deploy /var/www/nautilus.uchetgram.ru/server
+# Then deploy can fix project ownership (node_modules, server) and run DB init as postgres without password.
+deploy ALL=(ALL) NOPASSWD: /usr/bin/chown -R deploy\:deploy /var/www/nautilus.uchetgram.ru
 deploy ALL=(postgres) NOPASSWD: /var/www/nautilus.uchetgram.ru/deploy/run_db_init_as_postgres.sh

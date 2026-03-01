@@ -35,7 +35,15 @@ if [ -e "dist" ] && [ ! -L "dist" ]; then
     DIST_LINK="dist.live"
   fi
 fi
-npm ci || { echo "❌ npm ci failed"; exit 1; }
+if ! npm ci 2>/dev/null; then
+  echo "⚠️ npm ci failed (likely EACCES on node_modules). Fixing ownership..."
+  if sudo -n chown -R "$(whoami):$(whoami)" "$SERVER_PATH" 2>/dev/null; then
+    npm ci || { echo "❌ npm ci failed"; exit 1; }
+  else
+    echo "❌ npm ci failed. One-time on server: sudo chown -R deploy:deploy $SERVER_PATH (and add deploy/sudoers.deploy to /etc/sudoers.d/)"
+    exit 1
+  fi
+fi
 BUILD_DIR="${DIST_LINK}.$(date +%s)"
 PREV_LINK=
 [ -L "$DIST_LINK" ] && PREV_LINK=$(readlink "$DIST_LINK")
