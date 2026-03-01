@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Project, Role, Task, User, StatusOption, PriorityOption, NotificationPreferences, AutomationRule, TableCollection, Deal, Department, FinanceCategory, Fund, SalesFunnel, Doc, ContentPost, EmployeeInfo, Client, Contract, BusinessProcess, Meeting } from '../types';
-import { User as UserIcon, Briefcase, Archive, List, BarChart2, Bell, Zap, Users, Building2, Wallet, TrendingUp, X, Layout, PiggyBank } from 'lucide-react';
+import { User as UserIcon, Briefcase, Archive, List, BarChart2, Bell, Zap, Users, Building2, Wallet, TrendingUp, X, Layout, PiggyBank, FileText, Trash2 } from 'lucide-react';
 import { ProfileSettings } from './settings/ProfileSettings';
 import { SpaceSettings } from './settings/SpaceSettings';
 import { AutomationSettings } from './settings/AutomationSettings';
@@ -216,6 +216,7 @@ interface SettingsViewProps {
   onDeleteFund?: (id: string) => void;
   onSaveSalesFunnel?: (funnel: SalesFunnel) => void;
   onDeleteSalesFunnel?: (id: string) => void;
+  onClearBankStatements?: () => Promise<void>;
   notificationPrefs?: NotificationPreferences;
   
   initialTab?: string;
@@ -235,6 +236,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   financeCategories = [], onSaveFinanceCategory, onDeleteFinanceCategory,
   funds = [], onSaveFund, onDeleteFund,
   salesFunnels = [], onSaveSalesFunnel, onDeleteSalesFunnel,
+  onClearBankStatements,
   employeeInfos = [], deals = [], clients = [], contracts = [], meetings = [], businessProcesses = [],
   notificationPrefs, onClose
 }) => {
@@ -278,6 +280,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           
           <div className="text-xs font-bold text-gray-400 dark:text-gray-600 px-3 mt-6 mb-2 uppercase">РАЗНОЕ</div>
           <TabButton id="archive" label="Архив" icon={<Archive size={16}/>} />
+          <TabButton id="data" label="Данные выписок" icon={<FileText size={16}/>} />
         </div>
 
         {/* Правая панель контента */}
@@ -293,6 +296,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           {activeTab === 'statuses' && <SpaceSettings activeTab={activeTab} tables={tables} projects={projects} statuses={statuses} priorities={priorities} onUpdateTable={onUpdateTable!} onCreateTable={onCreateTable!} onDeleteTable={onDeleteTable!} onUpdateProjects={onUpdateProjects} onUpdateStatuses={onUpdateStatuses} onUpdatePriorities={onUpdatePriorities} />}
           {activeTab === 'priorities' && <SpaceSettings activeTab={activeTab} tables={tables} projects={projects} statuses={statuses} priorities={priorities} onUpdateTable={onUpdateTable!} onCreateTable={onCreateTable!} onDeleteTable={onDeleteTable!} onUpdateProjects={onUpdateProjects} onUpdateStatuses={onUpdateStatuses} onUpdatePriorities={onUpdatePriorities} />}
           {activeTab === 'automation' && <AutomationSettings activeTab="notifications" notificationPrefs={notificationPrefs ?? {}} onUpdatePrefs={onUpdateNotificationPrefs} automationRules={automationRules} statuses={statuses} onSaveRule={onSaveAutomationRule} onDeleteRule={onDeleteAutomationRule} />}
+          {activeTab === 'data' && onClearBankStatements && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Данные выписок</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Удалить все банковские выписки из базы. После этого загрузите выписки заново — комиссии (в т.ч. за приём наличных) будут учтены корректно.
+              </p>
+              <button
+                type="button"
+                onClick={() => { if (window.confirm('Удалить все выписки? После этого нужно будет загрузить их заново.')) onClearBankStatements(); }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm font-medium"
+              >
+                <Trash2 size={16} /> Очистить все выписки
+              </button>
+            </div>
+          )}
           {activeTab === 'archive' && (
             <ArchiveView 
               tasks={tasks.filter(t => t.isArchived)}

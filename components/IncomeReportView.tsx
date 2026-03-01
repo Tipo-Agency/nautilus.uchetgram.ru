@@ -149,24 +149,17 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
     if (!uploadPending || !uploadDepartmentId) return;
     const { result } = uploadPending;
     const stmtId = `stmt-dept-${uploadDepartmentId}`;
-    const existingStmt = bankStatements.find(s => s.id === stmtId);
-    const existingLines = new Map<string, BankStatementLine>(
-      (existingStmt?.lines || []).map(l => [l.id, l])
-    );
-    for (const l of result.lines) {
+    // Полная замена строк выписки из файла (без слияния со старыми), иначе при повторной загрузке
+    // старая ошибочная строка +900 и новая -900 дают дубли и неверные комиссии
+    const lines: BankStatementLine[] = result.lines.map(l => {
       const id = lineStableId(uploadDepartmentId, l.date, l.documentNumber, l.amount, l.description || '');
-      existingLines.set(id, {
-        ...l,
-        id,
-        statementId: stmtId,
-      });
-    }
-    const mergedLines = Array.from(existingLines.values());
+      return { ...l, id, statementId: stmtId };
+    });
     let totalIncome = 0;
     let totalOutcome = 0;
     let minDate = '';
     let maxDate = '';
-    mergedLines.forEach(l => {
+    lines.forEach(l => {
       if (l.type === 'income') totalIncome += l.amount;
       else totalOutcome += Math.abs(l.amount);
       if (l.date && (!minDate || l.date < minDate)) minDate = l.date;
@@ -190,7 +183,7 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
       uploadedByUserId: currentUser.id,
       totalIncome,
       totalOutcome,
-      lines: mergedLines,
+      lines,
     };
     onSaveBankStatements(stmt);
     setUploadPending(null);

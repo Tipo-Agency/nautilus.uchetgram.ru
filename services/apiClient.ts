@@ -192,6 +192,7 @@ export const financeEndpoint = {
   updateFinancialPlannings: (plannings: unknown[]) => put<{ ok: boolean }>('/finance/financial-plannings', plannings),
   getBankStatements: () => get<unknown[]>('/finance/bank-statements'),
   updateBankStatements: (statements: unknown[]) => put<{ ok: boolean }>('/finance/bank-statements', statements),
+  clearBankStatements: () => del<{ ok: boolean }>('/finance/bank-statements'),
   getIncomeReports: () => get<unknown[]>('/finance/income-reports'),
   updateIncomeReports: (reports: unknown[]) => put<{ ok: boolean }>('/finance/income-reports', reports),
 };

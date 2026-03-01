@@ -127,6 +127,17 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
     'Не удалось сохранить. Проверьте сеть и backend.'
   );
 
+  const clearBankStatements = async () => {
+    try {
+      await api.finance.clearBankStatements();
+      setBankStatements([]);
+      showNotification('Все выписки удалены. Можно загрузить заново.');
+    } catch (err) {
+      console.error('Clear bank statements failed:', err);
+      showNotification('Не удалось очистить выписки. Проверьте сеть и backend.');
+    }
+  };
+
   // Income Reports — то же
   const saveIncomeReports = createSaveHandlerAsync(
     () => incomeReportsRef.current,
@@ -148,7 +159,7 @@ export const useFinanceLogic = (showNotification: (msg: string) => void) => {
         savePurchaseRequest, deletePurchaseRequest,
         saveFinancialPlanDocument, deleteFinancialPlanDocument,
         saveFinancialPlanning, deleteFinancialPlanning,
-        saveBankStatements, saveIncomeReports,
+        saveBankStatements, saveIncomeReports, clearBankStatements,
     }
   };
 };

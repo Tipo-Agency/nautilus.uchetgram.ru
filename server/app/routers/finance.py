@@ -324,6 +324,15 @@ def row_to_income_report(row):
     }
 
 
+@router.delete("/bank-statements")
+async def clear_bank_statements(db: AsyncSession = Depends(get_db)):
+    """Удалить все выписки и их строки. Для сброса данных перед повторной загрузкой."""
+    await db.execute(BankStatementLine.__table__.delete())
+    await db.execute(BankStatement.__table__.delete())
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/bank-statements")
 async def get_bank_statements(db: AsyncSession = Depends(get_db)):
     try:

@@ -215,6 +215,7 @@ export const AppRouter: React.FC<AppRouterProps> = (props) => {
               onSaveDepartment={actions.saveDepartment} onDeleteDepartment={actions.deleteDepartment}
               onSaveFinanceCategory={actions.saveFinanceCategory} onDeleteFinanceCategory={actions.deleteFinanceCategory} onSaveFund={actions.saveFund} onDeleteFund={actions.deleteFund}
               onSaveSalesFunnel={actions.saveSalesFunnel} onDeleteSalesFunnel={actions.deleteSalesFunnel}
+              onClearBankStatements={actions.clearBankStatements}
               notificationPrefs={props.notificationPrefs}
               onRestoreTask={actions.restoreTask}
               onPermanentDelete={actions.permanentDeleteTask}
