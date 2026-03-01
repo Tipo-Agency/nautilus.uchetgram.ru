@@ -145,6 +145,18 @@ chmod +x scripts/deploy.sh
 SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/deploy.sh
 ```
 
+### 3.10. HTTPS (SSL)
+
+В эталонном конфиге nginx только **порт 80** (HTTP). Поэтому `https://...` даёт ошибку соединения (000), пока не настроен SSL.
+
+- **Проверка по HTTP:** открой в браузере **http://nautilus.uchetgram.ru** (без s) — сайт должен открываться.
+- **Включить HTTPS:** на сервере (домен должен указывать на сервер):
+  ```bash
+  sudo apt install certbot python3-certbot-nginx -y
+  sudo certbot --nginx -d nautilus.uchetgram.ru
+  ```
+  Certbot добавит в конфиг nginx блок `listen 443 ssl`. **Важно:** при каждом деплое скрипт перезаписывает файл в `/etc/nginx/sites-available/nautilus.uchetgram.ru` из репозитория, и блок с 443 пропадёт. После деплоя снова выполни `sudo certbot --nginx -d nautilus.uchetgram.ru` (он только добавит 443), либо перенеси блок `server { listen 443 ssl; ... }` в `deploy/nautilus.nginx.conf` в репозитории.
+
 ---
 
 ## 4. Дальнейший автодеплой
@@ -199,6 +211,13 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
    ```
 
 3. **Частые причины падения сервиса:** нет или неверный `DATABASE_URL` в `server/.env`, нет прав на каталог/venv у пользователя `deploy`, ошибка при импорте (нет зависимостей). В логах будет traceback.
+
+4. **500 на `/api/v1/finance/bank-statements`** (выписки не загружаются): часто из‑за того, что не применена миграция с колонкой `department_id`. На сервере выполни:
+   ```bash
+   cd /var/www/nautilus.uchetgram.ru/server && . venv/bin/activate && alembic upgrade head
+   sudo systemctl restart nautilus-api.service
+   ```
+   В ответе API при ошибке теперь приходит текст в `detail` (например, «column department_id does not exist») — по нему можно понять причину.
 
 **Если status=203/EXEC** — systemd не может выполнить бинарник из venv (нет файла, битый shebang или путь). Запуск через `bash -c` и `source venv/bin/activate` обходит это. На сервере (подставь свой путь, если не `/var/www/nautilus.uchetgram.ru`):
    ```bash

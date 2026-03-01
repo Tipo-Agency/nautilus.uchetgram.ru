@@ -1,5 +1,5 @@
 """Finance router - categories, funds, plan, requests, etc."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -326,16 +326,27 @@ def row_to_income_report(row):
 
 @router.get("/bank-statements")
 async def get_bank_statements(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(BankStatement).where(BankStatement.is_archived == False))
-    stmts = [row_to_bank_statement(r) for r in result.scalars().all()]
-    for s in stmts:
-        lines_result = await db.execute(select(BankStatementLine).where(BankStatementLine.statement_id == s["id"]))
-        s["lines"] = [row_to_bank_statement_line(r) for r in lines_result.scalars().all()]
-    return stmts
+    try:
+        result = await db.execute(select(BankStatement).where(BankStatement.is_archived == False))
+        stmts = [row_to_bank_statement(r) for r in result.scalars().all()]
+        for s in stmts:
+            lines_result = await db.execute(select(BankStatementLine).where(BankStatementLine.statement_id == s["id"]))
+            s["lines"] = [row_to_bank_statement_line(r) for r in lines_result.scalars().all()]
+        return stmts
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"bank-statements load failed: {e!s}")
 
 
 @router.put("/bank-statements")
 async def update_bank_statements(payload: list[dict], db: AsyncSession = Depends(get_db)):
+    try:
+        await _update_bank_statements_impl(payload, db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"bank-statements save failed: {e!s}")
+    return {"ok": True}
+
+
+async def _update_bank_statements_impl(payload: list[dict], db: AsyncSession):
     for p in payload:
         sid = p.get("id")
         if not sid:
@@ -385,7 +396,6 @@ async def update_bank_statements(payload: list[dict], db: AsyncSession = Depends
                 type=ln.get("type", "income"),
             ))
     await db.commit()
-    return {"ok": True}
 
 
 @router.get("/income-reports")
