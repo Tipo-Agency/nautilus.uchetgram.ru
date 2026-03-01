@@ -10,10 +10,11 @@ fi
 APP_USER="$PGUSER"
 PGHOST="${PGHOST:-localhost}"
 PGPORT="${PGPORT:-5432}"
-# Подключаемся как postgres. Локально (localhost) — через Unix-сокет (peer, без пароля)
+# Подключаемся как postgres. Локально — только Unix-сокет (peer, без пароля): убираем PGHOST/PGPORT из env
 export PGUSER=postgres
 export PGPASSWORD=""
 if [ -z "$PGHOST" ] || [ "$PGHOST" = "localhost" ] || [ "$PGHOST" = "127.0.0.1" ]; then
+  unset PGHOST PGPORT
   PSQL_CMD="psql -d postgres -v ON_ERROR_STOP=1"
 else
   PSQL_CMD="psql -h $PGHOST -p $PGPORT -d postgres -v ON_ERROR_STOP=1"
