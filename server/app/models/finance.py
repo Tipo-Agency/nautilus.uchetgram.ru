@@ -80,7 +80,7 @@ class FinancialPlanDocument(Base):
 class BankStatement(Base):
     __tablename__ = "bank_statements"
 
-    id = Column(String(36), primary_key=True, default=gen_id)
+    id = Column(String(64), primary_key=True, default=gen_id)
     name = Column(String(500), nullable=False)
     bank_name = Column(String(255), nullable=True)
     account_number = Column(String(100), nullable=True)
@@ -97,8 +97,8 @@ class BankStatement(Base):
 class BankStatementLine(Base):
     __tablename__ = "bank_statement_lines"
 
-    id = Column(String(36), primary_key=True, default=gen_id)
-    statement_id = Column(String(36), nullable=False)
+    id = Column(String(64), primary_key=True, default=gen_id)
+    statement_id = Column(String(64), nullable=False)
     date = Column(String(10), nullable=False)
     amount = Column(String(50), nullable=False)
     description = Column(String(1000), nullable=True)

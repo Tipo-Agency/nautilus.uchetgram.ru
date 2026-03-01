@@ -186,6 +186,8 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 
 **Если 502 Bad Gateway** (сайт не открывается или API не отвечает):
 
+   **Частая причина после деплоя по HTTPS:** в конфиге nginx для nautilus не было блока `listen 443 ssl`. Запросы к https://nautilus.uchetgram.ru попадали в другой server block (например admin-amiscus.tipa.uz), который проксирует на порт 3021 — там ничего не слушает → 502. Решение: добавить HTTPS-блок с сертификатом Let's Encrypt (один раз: `sudo certbot --nginx -d nautilus.uchetgram.ru`). При каждом деплое скрипт теперь сам запускает certbot после записи конфига, так что HTTPS сохраняется.
+
    1. **Быстрый фикс** (на сервере, под root или с sudo):
       ```bash
       cd /var/www/nautilus.uchetgram.ru
@@ -213,12 +215,10 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 
 3. **Частые причины падения сервиса:** нет или неверный `DATABASE_URL` в `server/.env`, нет прав на каталог/venv у пользователя `deploy`, ошибка при импорте (нет зависимостей). В логах будет traceback.
 
-4. **500 на `/api/v1/finance/bank-statements`** (выписки не загружаются): часто из‑за того, что не применена миграция с колонкой `department_id`. На сервере выполни:
-   ```bash
-   cd /var/www/nautilus.uchetgram.ru/server && . venv/bin/activate && alembic upgrade head
-   sudo systemctl restart nautilus-api.service
-   ```
-   В ответе API при ошибке теперь приходит текст в `detail` (например, «column department_id does not exist») — по нему можно понять причину.
+4. **500 на `/api/v1/finance/bank-statements`** (выписки не загружаются или «Save failed»):
+   - **«value too long for type character varying(36)»** — ID выписок/строк длиннее 36 символов. Нужна миграция 005 (увеличивает длину id до 64). Выполни на сервере: `cd /var/www/nautilus.uchetgram.ru/server && . venv/bin/activate && alembic upgrade head && sudo systemctl restart nautilus-api.service`.
+   - **«column department_id does not exist»** — не применена миграция 004. Та же команда: `alembic upgrade head` и перезапуск API.
+   В ответе API при ошибке приходит текст в `detail` — по нему можно понять причину.
 
 **Если status=203/EXEC** — systemd не может выполнить бинарник из venv (нет файла, битый shebang или путь). Запуск через `bash -c` и `source venv/bin/activate` обходит это. На сервере (подставь свой путь, если не `/var/www/nautilus.uchetgram.ru`):
    ```bash
