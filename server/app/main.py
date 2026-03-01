@@ -86,8 +86,9 @@ app.include_router(sites.router, prefix=settings.API_PREFIX, tags=["sites"])
 
 
 @app.get("/health")
+@app.get(settings.API_PREFIX + "/health")
 async def health():
-    """Health check endpoint."""
+    """Health check endpoint (root and under API prefix for nginx/frontend)."""
     return {"status": "ok"}
 
 
