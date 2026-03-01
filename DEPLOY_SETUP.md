@@ -151,3 +151,51 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 - Actions подключается по SSH под пользователем `deploy`, делает `git pull`, запускает `scripts/deploy.sh`.
 
 Команда локально: `npm run push` (add + commit + push).
+
+---
+
+## 5. Проверка на сервере
+
+После деплоя проверь:
+
+1. **Сайт открывается:** https://nautilus.uchetgram.ru (или твой домен) — нет 502.
+2. **API отвечает:** открой в браузере или `curl`:
+   - `https://твой-домен/api/v1/health` → `{"status":"ok"}`
+   - `https://твой-домен/api/v1/auth/users` → JSON (список пользователей или `[]`).
+3. **Данные сохраняются:** зайди в приложение → например, «Финансы» → «Справка о доходах» → добавь выписку или подразделение → сохрани. Обнови страницу — данные должны остаться (источник истины — БД).
+4. **Логи API при ошибках:** на сервере `journalctl -u nautilus-api -n 50 -f` или логи в GitHub Actions.
+
+**Если все запросы к `/api/v1/*` отдают 404:** фронт ждёт префикс `/api/v1`, бэкенд должен его использовать. В `server/.env` должно быть `API_PREFIX=/api/v1`. Деплой-скрипт при каждом запуске выставляет это сам. Если правили .env вручную — проверь и перезапусти API: `sudo systemctl restart nautilus-api.service`.
+
+**Если 502 Bad Gateway** — Nginx не достучился до бэкенда. На сервере:
+
+1. **Проверить, что сервис запущен и слушает порт:**
+   ```bash
+   sudo systemctl status nautilus-api.service
+   curl -s http://127.0.0.1:8000/api/v1/health
+   ```
+   Если сервис `inactive` или `failed` — смотреть логи: `sudo journalctl -u nautilus-api.service -n 80 --no-pager`.
+
+2. **Исправить API_PREFIX в .env** (разделитель в sed — вертикальная черта `|`, не слэш):
+   ```bash
+   grep -q '^API_PREFIX=' /var/www/nautilus.uchetgram.ru/server/.env && \
+     sudo sed -i 's|^API_PREFIX=.*|API_PREFIX=/api/v1|' /var/www/nautilus.uchetgram.ru/server/.env || \
+     echo 'API_PREFIX=/api/v1' | sudo tee -a /var/www/nautilus.uchetgram.ru/server/.env
+   sudo systemctl restart nautilus-api.service
+   ```
+
+3. **Частые причины падения сервиса:** нет или неверный `DATABASE_URL` в `server/.env`, нет прав на каталог/venv у пользователя `deploy`, ошибка при импорте (нет зависимостей). В логах будет traceback.
+
+**Если status=203/EXEC** — systemd не может выполнить бинарник из venv (нет файла, битый shebang или путь). Запуск через `bash -c` и `source venv/bin/activate` обходит это. На сервере (подставь свой путь, если не `/var/www/nautilus.uchetgram.ru`):
+   ```bash
+   S="/var/www/nautilus.uchetgram.ru"
+   sudo sed -i "s|^ExecStart=.*|ExecStart=/bin/bash -c 'cd $S/server \&\& . venv/bin/activate \&\& exec python -m uvicorn app.main:app --host 127.0.0.1 --port 8000'|" /etc/systemd/system/nautilus-api.service
+   sudo systemctl daemon-reload
+   sudo systemctl restart nautilus-api.service
+   ```
+   Если **venv вообще нет** (No such file or directory) — его создаёт только деплой. Не дублируй изменения вручную: запусти полный деплой на сервере (под пользователем `deploy`):
+   ```bash
+   cd /var/www/nautilus.uchetgram.ru
+   SERVER_PATH=/var/www/nautilus.uchetgram.ru ./scripts/deploy.sh
+   ```
+   Скрипт подтянет код, создаст venv, поставит зависимости, при необходимости инициализирует БД, обновит unit и перезапустит `nautilus-api`. Если деплой падает на шаге БД (alembic) — сначала настрой sudoers и инициализацию БД (п. 3.6–3.7).

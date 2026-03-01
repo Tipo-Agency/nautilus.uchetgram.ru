@@ -70,6 +70,12 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     echo "❌ DATABASE_URL must not be SQLite. Use postgresql+asyncpg://..."
     exit 1
   fi
+  # Фронт ходит на /api/v1/* — бэкенд должен слушать тот же префикс
+  if grep -q '^API_PREFIX=' "$SERVER_PATH/server/.env" 2>/dev/null; then
+    sed -i.bak "s|^API_PREFIX=.*|API_PREFIX=/api/v1|" "$SERVER_PATH/server/.env" 2>/dev/null || true
+  else
+    echo "API_PREFIX=/api/v1" >> "$SERVER_PATH/server/.env"
+  fi
   export DATABASE_URL=$(grep '^DATABASE_URL=' "$SERVER_PATH/server/.env" | cut -d= -f2- | sed "s/^['\"]//;s/['\"]$//")
   PARSED=$(python3 deploy/parse_db_url.py 2>/dev/null) || {
     echo "❌ DATABASE_URL must be postgresql+asyncpg://... (invalid or not PostgreSQL)"
@@ -108,6 +114,7 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
     exit 1
   }
   # Инициализация БД: создание (если нет), владелец, права на public (через wrapper по sudoers)
+  chmod +x "$SERVER_PATH/deploy/run_db_init_as_postgres.sh" "$SERVER_PATH/deploy/init_postgres_db.sh" 2>/dev/null || true
   if sudo -n -u postgres "$SERVER_PATH/deploy/run_db_init_as_postgres.sh" 2>&1; then
     echo "✅ DB init (schema public) OK"
   else
