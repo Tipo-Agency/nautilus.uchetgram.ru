@@ -66,7 +66,42 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
   const [expandedStatementId, setExpandedStatementId] = useState<string | null>(null);
   const [balanceDepartmentId, setBalanceDepartmentId] = useState<string | null>(null);
   const [balanceLineType, setBalanceLineType] = useState<'income' | 'outcome'>('income');
+  const [balancePeriodFrom, setBalancePeriodFrom] = useState('');
+  const [balancePeriodTo, setBalancePeriodTo] = useState('');
+  const [balanceCustomPeriodOpen, setBalanceCustomPeriodOpen] = useState(false);
+  const [expandedBalanceDates, setExpandedBalanceDates] = useState<Set<string>>(new Set());
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  const getWeekBounds = (d: Date): [string, string] => {
+    const day = d.getDay();
+    const monOffset = day === 0 ? -6 : 1 - day;
+    const mon = new Date(d);
+    mon.setDate(mon.getDate() + monOffset);
+    const sun = new Date(mon);
+    sun.setDate(sun.getDate() + 6);
+    return [mon.toISOString().slice(0, 10), sun.toISOString().slice(0, 10)];
+  };
+  const setBalanceToCurrentWeek = () => {
+    const [from, to] = getWeekBounds(new Date());
+    setBalancePeriodFrom(from);
+    setBalancePeriodTo(to);
+  };
+  const shiftBalanceWeek = (delta: number) => {
+    if (!balancePeriodFrom) return;
+    const d = new Date(balancePeriodFrom + 'T12:00:00');
+    d.setDate(d.getDate() + delta * 7);
+    const [from, to] = getWeekBounds(d);
+    setBalancePeriodFrom(from);
+    setBalancePeriodTo(to);
+  };
+  const toggleBalanceDateExpand = (date: string) => {
+    setExpandedBalanceDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
   const [reconPeriodFrom, setReconPeriodFrom] = useState(today);
   const [reconPeriodTo, setReconPeriodTo] = useState(today);
   const [reportFilterDateFrom, setReportFilterDateFrom] = useState('');
@@ -82,6 +117,10 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
     if (departments.length && !uploadDepartmentId) setUploadDepartmentId(departments[0].id);
     if (departments.length && !createDepartmentId) setCreateDepartmentId(departments[0].id);
   }, [departments, uploadDepartmentId, createDepartmentId]);
+
+  useEffect(() => {
+    if (balanceDepartmentId != null) setBalanceToCurrentWeek();
+  }, [balanceDepartmentId]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -319,22 +358,28 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
             (() => {
               const dept = departments.find(d => d.id === balanceDepartmentId);
               const stmt = bankStatements.find(s => s.departmentId === balanceDepartmentId && s.id === departmentStatementId(balanceDepartmentId));
-              const lines = (stmt?.lines || []).filter(l => l.type === balanceLineType).sort((a, b) => a.date.localeCompare(b.date));
+              let lines = (stmt?.lines || []).filter(l => l.type === balanceLineType).sort((a, b) => a.date.localeCompare(b.date));
+              if (balancePeriodFrom) lines = lines.filter(l => l.date >= balancePeriodFrom);
+              if (balancePeriodTo) lines = lines.filter(l => l.date <= balancePeriodTo);
               const byDate = lines.reduce<Record<string, typeof lines>>((acc, l) => {
                 if (!acc[l.date]) acc[l.date] = [];
                 acc[l.date].push(l);
                 return acc;
               }, {});
               const dates = Object.keys(byDate).sort();
+              const fmtDateShort = (s: string) => {
+                const [y, m, d] = s.split('-');
+                return `${d}.${m}`;
+              };
               return (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button type="button" onClick={() => setBalanceDepartmentId(null)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#333] text-gray-600 dark:text-gray-400">
                       <ChevronLeft size={20} />
                     </button>
                     <h3 className="font-semibold text-gray-900 dark:text-white">Баланс: {dept?.name || '—'}</h3>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 items-center">
                     <button
                       type="button"
                       onClick={() => setBalanceLineType('income')}
@@ -350,10 +395,36 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
                       Расходы
                     </button>
                   </div>
+                  <div className="flex flex-wrap gap-2 items-center p-3 bg-gray-50 dark:bg-[#252525] rounded-xl border border-gray-200 dark:border-[#333]">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Период:</span>
+                    <button type="button" onClick={() => shiftBalanceWeek(-1)} className="px-2 py-1 rounded-lg text-sm bg-gray-200 dark:bg-[#333] hover:bg-gray-300 dark:hover:bg-[#404040]">
+                      ← Неделя назад
+                    </button>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white min-w-[140px]">
+                      {balancePeriodFrom && balancePeriodTo ? `${fmtDateShort(balancePeriodFrom)} – ${fmtDateShort(balancePeriodTo)}` : '—'}
+                    </span>
+                    <button type="button" onClick={() => shiftBalanceWeek(1)} className="px-2 py-1 rounded-lg text-sm bg-gray-200 dark:bg-[#333] hover:bg-gray-300 dark:hover:bg-[#404040]">
+                      Неделя вперёд →
+                    </button>
+                    <button type="button" onClick={() => setBalanceToCurrentWeek()} className="px-2 py-1 rounded-lg text-sm bg-gray-200 dark:bg-[#333] hover:bg-gray-300 dark:hover:bg-[#404040]">
+                      Текущая неделя
+                    </button>
+                    <button type="button" onClick={() => setBalanceCustomPeriodOpen(true)} className="px-2 py-1 rounded-lg text-sm border border-gray-300 dark:border-[#555] hover:bg-gray-100 dark:hover:bg-[#333]">
+                      Произвольный период
+                    </button>
+                  </div>
+                  {balanceCustomPeriodOpen && (
+                    <div className="flex flex-wrap gap-4 items-end p-3 border border-gray-200 dark:border-[#333] rounded-xl">
+                      <DateInput label="Дата с" value={balancePeriodFrom} onChange={setBalancePeriodFrom} max={balancePeriodTo || undefined} />
+                      <DateInput label="Дата по" value={balancePeriodTo} onChange={setBalancePeriodTo} min={balancePeriodFrom || undefined} />
+                      <button type="button" onClick={() => setBalanceCustomPeriodOpen(false)} className="px-3 py-1.5 rounded-lg text-sm bg-gray-200 dark:bg-[#333]">Закрыть</button>
+                    </div>
+                  )}
                   <div className="border border-gray-200 dark:border-[#333] rounded-xl overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50 dark:bg-[#202020]">
                         <tr>
+                          <th className="text-left px-4 py-2 text-gray-600 dark:text-gray-400 w-10" />
                           <th className="text-left px-4 py-2 text-gray-600 dark:text-gray-400">Дата</th>
                           <th className="text-right px-4 py-2 text-gray-600 dark:text-gray-400">Сумма</th>
                           <th className="text-left px-4 py-2 text-gray-600 dark:text-gray-400">Назначение</th>
@@ -361,17 +432,43 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-[#333]">
                         {dates.length === 0 ? (
-                          <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Нет операций</td></tr>
+                          <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">Нет операций за выбранный период</td></tr>
                         ) : (
-                          dates.flatMap(date => (byDate[date] || []).map(line => (
-                            <tr key={line.id} className="hover:bg-gray-50 dark:hover:bg-[#252525]">
-                              <td className="px-4 py-2 text-gray-900 dark:text-white">{line.date}</td>
-                              <td className={`px-4 py-2 text-right font-medium ${balanceLineType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {Math.abs(line.amount).toLocaleString('ru-RU')} {CURRENCY}
-                              </td>
-                              <td className="px-4 py-2 text-gray-600 dark:text-gray-300 truncate max-w-md" title={line.description || line.counterparty || ''}>{line.description || line.counterparty || '—'}</td>
-                            </tr>
-                          )))
+                          dates.map(date => {
+                            const dayLines = byDate[date] || [];
+                            const daySum = dayLines.reduce((s, l) => s + Math.abs(l.amount), 0);
+                            const isExpanded = expandedBalanceDates.has(date);
+                            return (
+                              <React.Fragment key={date}>
+                                <tr
+                                  className="hover:bg-gray-50 dark:hover:bg-[#252525] cursor-pointer"
+                                  onClick={() => toggleBalanceDateExpand(date)}
+                                >
+                                  <td className="px-2 py-2 text-gray-500">
+                                    <ChevronRight size={16} className={`inline-block transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </td>
+                                  <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{date}</td>
+                                  <td className={`px-4 py-2 text-right font-medium ${balanceLineType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                    {daySum.toLocaleString('ru-RU')} {CURRENCY}
+                                    {dayLines.length > 1 && <span className="text-gray-400 font-normal ml-1">({dayLines.length})</span>}
+                                  </td>
+                                  <td className="px-4 py-2 text-gray-500" />
+                                </tr>
+                                {isExpanded && dayLines.map(line => (
+                                  <tr key={line.id} className="bg-gray-50/50 dark:bg-[#1a1a1a]">
+                                    <td className="px-2 py-1" />
+                                    <td className="px-4 py-1.5 text-gray-500 text-xs">{line.date}</td>
+                                    <td className={`px-4 py-1.5 text-right text-xs font-medium ${balanceLineType === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                                      {Math.abs(line.amount).toLocaleString('ru-RU')} {CURRENCY}
+                                    </td>
+                                    <td className="px-4 py-1.5 text-gray-600 dark:text-gray-400 text-xs truncate max-w-md" title={line.description || line.counterparty || ''}>
+                                      {line.description || line.counterparty || '—'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -574,15 +671,21 @@ export const IncomeReportView: React.FC<IncomeReportViewProps> = ({
           : (r.departmentId ? bankStatements.filter(s => s.id === departmentStatementId(r.departmentId!)) : []);
         let commissionAmount = 0;
         let totalOutcome = 0;
-        const isCommission = (desc: string | undefined) => {
+        const isCommission = (desc: string | undefined, counterparty?: string) => {
           const d = (desc || '').toLowerCase();
-          return d.includes('комиссия') || d.includes('ком.') || /ком\s*\./i.test(d);
+          const c = (counterparty || '').toLowerCase();
+          const t = d + ' ' + c;
+          return (
+            t.includes('комиссия') || t.includes('ком.') || /ком\s*\./i.test(t) ||
+            t.includes('прием') && (t.includes('пересч') || t.includes('нал') || t.includes('наличн')) ||
+            t.includes('зачисление наличных') || t.includes('пересч.нал') || t.includes('ком.за')
+          );
         };
         stmts.forEach(s => {
           (s.lines || []).filter(l => l.date >= r.periodFrom && l.date <= r.periodTo).forEach(l => {
             if (l.type === 'outcome') {
               totalOutcome += Math.abs(l.amount);
-              if (isCommission(l.description)) commissionAmount += Math.abs(l.amount);
+              if (isCommission(l.description, l.counterparty)) commissionAmount += Math.abs(l.amount);
             }
           });
         });
