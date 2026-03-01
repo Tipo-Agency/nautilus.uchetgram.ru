@@ -271,9 +271,9 @@ const App = () => {
                         users={state.users} projects={state.projects} statuses={state.statuses} priorities={state.priorities} tables={state.tables}
                         initialTab="pages" onClose={actions.closeEditTable}
                         onUpdateTable={actions.updateTable}
-                        onCreateTable={() => {}} onDeleteTable={() => {}}
-                        onUpdateUsers={() => {}} onUpdateProjects={() => {}} onUpdateStatuses={() => {}} onUpdatePriorities={() => {}}
+                        onCreateTable={() => {}} onDeleteTable={() => {}} onUpdateUsers={() => {}} onUpdateProjects={() => {}} onUpdateStatuses={() => {}} onUpdatePriorities={() => {}}
                         onUpdateNotificationPrefs={() => {}}
+                        notificationPrefs={state.notificationPrefs}
                      />
                  </div>
              </div>

@@ -27,8 +27,8 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
 
-    # API prefix
-    API_PREFIX: str = "/api"
+    # API prefix (должен совпадать с VITE_API_URL: /api/v1)
+    API_PREFIX: str = "/api/v1"
 
     class Config:
         env_file = ".env"

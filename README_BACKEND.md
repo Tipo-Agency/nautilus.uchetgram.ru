@@ -1,10 +1,28 @@
 # Taska Backend (Python FastAPI)
 
-## Локальный запуск
+## Быстрый старт (два терминала)
+
+**Терминал 1 — бэкенд:**
+```bash
+cd server && cp .env.example .env   # если .env ещё нет
+cd server && alembic upgrade head   # один раз: миграции
+npm run dev:server
+```
+
+**Терминал 2 — фронт:**
+```bash
+npm run dev
+```
+
+Фронт: http://localhost:3000, API: http://localhost:8000. Vite проксирует `/api` на бэкенд.
+
+---
+
+## Локальный запуск (подробно)
 
 ### 1. PostgreSQL
 
-Установите PostgreSQL или используйте Docker:
+PostgreSQL обязателен (SQLite запрещён). Docker:
 
 ```bash
 docker run -d --name taska-db -e POSTGRES_USER=taska -e POSTGRES_PASSWORD=taska -e POSTGRES_DB=taska -p 5432:5432 postgres:16-alpine
@@ -19,14 +37,15 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Создайте `.env`:
+Создайте `.env` (скопируй из `.env.example`):
 ```
 DATABASE_URL=postgresql+asyncpg://taska:taska@localhost:5432/taska
 SECRET_KEY=your-secret-key
 CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+API_PREFIX=/api/v1
 ```
 
-Запустите миграции и сервер:
+Миграции и запуск:
 
 ```bash
 alembic upgrade head
@@ -34,14 +53,14 @@ python seed.py          # опционально: демо-данные
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Или из корня: `npm run dev:server`.
+
 ### 3. Frontend
 
 ```bash
 npm install
 npm run dev
 ```
-
-Frontend на http://localhost:3000, API на http://localhost:8000. Vite проксирует `/api` на backend.
 
 ## Docker Compose (полный стек)
 

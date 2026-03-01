@@ -292,7 +292,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
           {activeTab === 'sales-funnels' && <SalesFunnelsSettings funnels={salesFunnels} onSave={onSaveSalesFunnel!} onDelete={onDeleteSalesFunnel!} notificationPrefs={notificationPrefs} onUpdatePrefs={onUpdateNotificationPrefs} />}
           {activeTab === 'statuses' && <SpaceSettings activeTab={activeTab} tables={tables} projects={projects} statuses={statuses} priorities={priorities} onUpdateTable={onUpdateTable!} onCreateTable={onCreateTable!} onDeleteTable={onDeleteTable!} onUpdateProjects={onUpdateProjects} onUpdateStatuses={onUpdateStatuses} onUpdatePriorities={onUpdatePriorities} />}
           {activeTab === 'priorities' && <SpaceSettings activeTab={activeTab} tables={tables} projects={projects} statuses={statuses} priorities={priorities} onUpdateTable={onUpdateTable!} onCreateTable={onCreateTable!} onDeleteTable={onDeleteTable!} onUpdateProjects={onUpdateProjects} onUpdateStatuses={onUpdateStatuses} onUpdatePriorities={onUpdatePriorities} />}
-          {activeTab === 'automation' && <AutomationSettings activeTab="notifications" notificationPrefs={{}} onUpdatePrefs={onUpdateNotificationPrefs} automationRules={automationRules} statuses={statuses} onSaveRule={onSaveAutomationRule} onDeleteRule={onDeleteAutomationRule} />}
+          {activeTab === 'automation' && <AutomationSettings activeTab="notifications" notificationPrefs={notificationPrefs ?? {}} onUpdatePrefs={onUpdateNotificationPrefs} automationRules={automationRules} statuses={statuses} onSaveRule={onSaveAutomationRule} onDeleteRule={onDeleteAutomationRule} />}
           {activeTab === 'archive' && (
             <ArchiveView 
               tasks={tasks.filter(t => t.isArchived)}

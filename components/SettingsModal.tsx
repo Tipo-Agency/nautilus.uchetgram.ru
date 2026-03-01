@@ -25,6 +25,7 @@ interface SettingsModalProps {
   onPermanentDelete?: (taskId: string) => void; 
   onClose: () => void;
   onUpdateNotificationPrefs: (prefs: NotificationPreferences) => void;
+  notificationPrefs?: NotificationPreferences;
   automationRules?: AutomationRule[];
   onSaveAutomationRule?: (rule: AutomationRule) => void;
   onDeleteAutomationRule?: (id: string) => void;
@@ -42,7 +43,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateTable, onCreateTable, onDeleteTable,
   onUpdateUsers, onUpdateProjects, onUpdateStatuses, onUpdatePriorities,
   onRestoreTask, onPermanentDelete,
-  onUpdateNotificationPrefs, automationRules = [], onSaveAutomationRule, onDeleteAutomationRule,
+  onUpdateNotificationPrefs, notificationPrefs: notificationPrefsProp, automationRules = [], onSaveAutomationRule, onDeleteAutomationRule,
   currentUser, onUpdateProfile, initialTab = 'users',
   onSaveDeal
 }) => {
@@ -101,7 +102,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setClientBotToken(storageService.getClientBotToken());
       setChatId(storageService.getTelegramChatId());
       setEnableTelegramImport(storageService.getEnableTelegramImport());
-      setPrefs(storageService.getNotificationPrefs());
+      setPrefs(notificationPrefsProp ?? DEFAULT_NOTIFICATION_PREFS);
       
       if (currentUser) {
           setProfileName(currentUser.name);
@@ -112,7 +113,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           setProfilePassword(currentUser.password || '');
           setProfileAvatar(currentUser.avatar || '');
       }
-  }, [currentUser]);
+  }, [currentUser, notificationPrefsProp]);
 
   const archivedTasks = tasks.filter(t => t.isArchived);
 
@@ -205,10 +206,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       });
       
       onUpdateUsers(updatedUsers);
-      // onUpdateUsers уже вызывает api.users.updateAll, который сохраняет в облако через setUsers
-      // Но для надежности ждем еще одно сохранение
-      const { storageService } = await import('../services/storageService');
-      await storageService.saveToCloud();
     }
   };
   const handleResetPassword = async (id: string) => {

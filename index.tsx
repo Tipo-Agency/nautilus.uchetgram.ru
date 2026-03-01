@@ -1,9 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { runSeed } from './seed/mockData';
 
-runSeed();
+// Единственный источник истины — backend + PostgreSQL. Мок/seed не запускаем.
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
