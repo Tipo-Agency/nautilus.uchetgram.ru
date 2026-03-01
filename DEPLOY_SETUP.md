@@ -171,14 +171,24 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 
 **Если все запросы к `/api/v1/*` отдают 404:** фронт ждёт префикс `/api/v1`, бэкенд должен его использовать. В `server/.env` должно быть `API_PREFIX=/api/v1`. Деплой-скрипт при каждом запуске выставляет это сам. Если правили .env вручную — проверь и перезапусти API: `sudo systemctl restart nautilus-api.service`.
 
-**Если 502 Bad Gateway** — Nginx не достучился до бэкенда. На сервере:
+**Если 502 Bad Gateway** (сайт не открывается или API не отвечает):
 
-1. **Проверить, что сервис запущен и слушает порт:**
-   ```bash
-   sudo systemctl status nautilus-api.service
-   curl -s http://127.0.0.1:8000/api/v1/health
-   ```
-   Если сервис `inactive` или `failed` — смотреть логи: `sudo journalctl -u nautilus-api.service -n 80 --no-pager`.
+   1. **Быстрый фикс** (на сервере, под root или с sudo):
+      ```bash
+      cd /var/www/nautilus.uchetgram.ru
+      sudo bash deploy/fix_502.sh
+      ```
+      Скрипт выставит `API_PREFIX=/api/v1` в `server/.env`, обновит unit, перезапустит `nautilus-api` и проверит `curl .../api/v1/health`. Если после этого сайт всё ещё 502 — переходи к п. 2.
+
+   2. **Диагностика** (пришли вывод):
+      ```bash
+      cd /var/www/nautilus.uchetgram.ru
+      bash deploy/diagnose_502.sh
+      ```
+      В выводе будет: статус сервиса, ответ health, наличие `dist/`, конфиг nginx, последние логи API, наличие venv. По ним можно понять причину (сервис не стартует, нет venv, неверный root в nginx и т.д.).
+
+   - Если **API не active** — смотри логи: `sudo journalctl -u nautilus-api.service -n 80 --no-pager` (часто: нет `DATABASE_URL`, ошибка импорта, нет venv).
+   - Если **root** в nginx указывает на несуществующую папку — проверь `ls $P/dist` и что в конфиге `root $P/dist` или `$P/dist.live`.
 
 2. **Исправить API_PREFIX в .env** (разделитель в sed — вертикальная черта `|`, не слэш):
    ```bash
