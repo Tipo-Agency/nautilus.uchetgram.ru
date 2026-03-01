@@ -150,12 +150,13 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 В эталонном конфиге nginx только **порт 80** (HTTP). Поэтому `https://...` даёт ошибку соединения (000), пока не настроен SSL.
 
 - **Проверка по HTTP:** открой в браузере **http://nautilus.uchetgram.ru** (без s) — сайт должен открываться.
-- **Включить HTTPS:** на сервере (домен должен указывать на сервер):
+- **Включить HTTPS (один раз):** на сервере (домен должен указывать на сервер):
   ```bash
   sudo apt install certbot python3-certbot-nginx -y
   sudo certbot --nginx -d nautilus.uchetgram.ru
   ```
-  Certbot добавит в конфиг nginx блок `listen 443 ssl`. **Важно:** при каждом деплое скрипт перезаписывает файл в `/etc/nginx/sites-available/nautilus.uchetgram.ru` из репозитория, и блок с 443 пропадёт. После деплоя снова выполни `sudo certbot --nginx -d nautilus.uchetgram.ru` (он только добавит 443), либо перенеси блок `server { listen 443 ssl; ... }` в `deploy/nautilus.nginx.conf` в репозитории.
+  Certbot добавит в конфиг nginx блок `listen 443 ssl` и редирект HTTP→HTTPS.
+- **После деплоя:** скрипт деплоя перезаписывает конфиг nginx (блок 443 пропадает), затем **сам запускает certbot** (`certbot --nginx -d nautilus.uchetgram.ru --non-interactive`), если certbot установлен. Certbot заново добавляет HTTPS в конфиг, так что после автодеплоя HTTPS остаётся рабочим. Домен по умолчанию — `nautilus.uchetgram.ru`; другой можно задать через переменную `NAUTILUS_DOMAIN` при запуске `deploy.sh`.
 
 ---
 
