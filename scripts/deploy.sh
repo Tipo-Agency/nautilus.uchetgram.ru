@@ -164,8 +164,8 @@ asyncio.run(check())
     sudo journalctl -u nautilus-api.service -n 30 --no-pager 2>/dev/null || true
     exit 1
   fi
-  HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/api/v1/health 2>/dev/null || echo "000")
-  HEALTH_BODY=$(curl -s http://127.0.0.1:8000/api/v1/health 2>/dev/null || true)
+  HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8002/api/v1/health 2>/dev/null || echo "000")
+  HEALTH_BODY=$(curl -s http://127.0.0.1:8002/api/v1/health 2>/dev/null || true)
   if [ "$HEALTH" != "200" ] || ! echo "$HEALTH_BODY" | grep -q '"status":"ok"'; then
     echo "❌ /api/v1/health failed (HTTP $HEALTH). Response: $HEALTH_BODY"
     echo "   Check API_PREFIX=/api/v1 in server/.env and server/app/main.py health route."

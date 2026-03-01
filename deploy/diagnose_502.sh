@@ -10,9 +10,9 @@ echo "=== 1. nautilus-api.service status ==="
 sudo systemctl status nautilus-api.service --no-pager 2>/dev/null || true
 
 echo ""
-echo "=== 2. Health (127.0.0.1:8000) ==="
-curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8000/api/v1/health 2>/dev/null || echo "curl failed (connection refused?)"
-curl -s http://127.0.0.1:8000/api/v1/health 2>/dev/null || true
+echo "=== 2. Health (127.0.0.1:8002) ==="
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:8002/api/v1/health 2>/dev/null || echo "curl failed (connection refused?)"
+curl -s http://127.0.0.1:8002/api/v1/health 2>/dev/null || true
 echo ""
 
 echo "=== 3. Static root (dist) ==="

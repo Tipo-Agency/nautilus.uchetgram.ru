@@ -39,9 +39,9 @@ if ! systemctl is-active --quiet nautilus-api.service; then
   exit 1
 fi
 
-CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/api/v1/health 2>/dev/null || echo "000")
+CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8002/api/v1/health 2>/dev/null || echo "000")
 if [ "$CODE" = "200" ]; then
-  echo "✅ Health OK: http://127.0.0.1:8000/api/v1/health → 200"
+  echo "✅ Health OK: http://127.0.0.1:8002/api/v1/health → 200"
 else
   echo "❌ Health returned HTTP $CODE. Run: bash $P/deploy/diagnose_502.sh"
   exit 1

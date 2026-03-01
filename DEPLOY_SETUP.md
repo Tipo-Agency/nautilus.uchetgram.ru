@@ -114,6 +114,8 @@ sudo -u postgres env PGUSER=nautilus_user PGHOST=localhost PGPORT=5432 PGDATABAS
 
 ### 3.8. Systemd-сервис для Python API (опционально)
 
+Бэкенд Nautilus слушает порт **8002** (на сервере 8000/8001 могут быть заняты другими проектами). В nginx `proxy_pass` и в unit должен быть тот же порт.
+
 Файл `/etc/systemd/system/nautilus-api.service`:
 
 ```ini
@@ -126,7 +128,7 @@ Type=simple
 User=deploy
 WorkingDirectory=/var/www/nautilus.uchetgram.ru/server
 EnvironmentFile=/var/www/nautilus.uchetgram.ru/server/.env
-ExecStart=/var/www/nautilus.uchetgram.ru/server/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+ExecStart=/var/www/nautilus.uchetgram.ru/server/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8002
 Restart=always
 
 [Install]
@@ -223,7 +225,7 @@ SERVER_PATH=/var/www/nautilus.uchetgram.ru TELEGRAM_BOT_TOKEN=xxx ./scripts/depl
 **Если status=203/EXEC** — systemd не может выполнить бинарник из venv (нет файла, битый shebang или путь). Запуск через `bash -c` и `source venv/bin/activate` обходит это. На сервере (подставь свой путь, если не `/var/www/nautilus.uchetgram.ru`):
    ```bash
    S="/var/www/nautilus.uchetgram.ru"
-   sudo sed -i "s|^ExecStart=.*|ExecStart=/bin/bash -c 'cd $S/server \&\& . venv/bin/activate \&\& exec python -m uvicorn app.main:app --host 127.0.0.1 --port 8000'|" /etc/systemd/system/nautilus-api.service
+   sudo sed -i "s|^ExecStart=.*|ExecStart=/bin/bash -c 'cd $S/server \&\& . venv/bin/activate \&\& exec python -m uvicorn app.main:app --host 127.0.0.1 --port 8002'|" /etc/systemd/system/nautilus-api.service
    sudo systemctl daemon-reload
    sudo systemctl restart nautilus-api.service
    ```

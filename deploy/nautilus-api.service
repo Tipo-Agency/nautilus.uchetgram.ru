@@ -11,7 +11,7 @@ User=deploy
 WorkingDirectory=__SERVER_PATH__/server
 EnvironmentFile=__SERVER_PATH__/server/.env
 # Запуск через bash + activate: не зависит от shebang в venv/bin/python
-ExecStart=/bin/bash -c 'cd __SERVER_PATH__/server && . venv/bin/activate && exec python -m uvicorn app.main:app --host 127.0.0.1 --port 8000'
+ExecStart=/bin/bash -c 'cd __SERVER_PATH__/server && . venv/bin/activate && exec python -m uvicorn app.main:app --host 127.0.0.1 --port 8002'
 Restart=always
 
 [Install]
