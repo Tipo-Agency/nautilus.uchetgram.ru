@@ -89,24 +89,28 @@ root /var/www/nautilus.uchetgram.ru/dist.live;
 # Python 3.9+
 ```
 
-### 3.6. Один раз: sudoers (чтобы автодеплой проходил без ручных шагов)
+### 3.6. Один раз: sudoers + инициализация БД (обязательно перед первым автодеплоем)
 
-В `deploy/sudoers.deploy` **две строки**: (1) `chown -R deploy:deploy` на **весь каталог проекта** (чтобы при EACCES на `node_modules` или `server/venv` деплой мог сам поправить владельца); (2) запуск `run_db_init_as_postgres.sh` от postgres — инициализация БД при деплое без пароля.
+Без этого автодеплой упадёт на шаге БД: «sudo: a password is required» и «permission denied for schema public». Выполни **один раз на сервере** (под root или пользователем с sudo), подставь свой путь если не `/var/www/nautilus.uchetgram.ru`:
 
-Сделай **один раз** на сервере:
 ```bash
-sudo cp /var/www/nautilus.uchetgram.ru/deploy/sudoers.deploy /etc/sudoers.d/deploy
-# Если SERVER_PATH другой — поправь путь в обеих строках файла:
-# sudo sed -i 's|/var/www/nautilus.uchetgram.ru|ТВОЙ_ПУТЬ|g' /etc/sudoers.d/deploy
+# Путь проекта (поменяй, если другой)
+P="/var/www/nautilus.uchetgram.ru"
+
+# 1) Sudoers: chown всего проекта + запуск run_db_init_as_postgres без пароля
+sudo cp "$P/deploy/sudoers.deploy" /etc/sudoers.d/deploy
+sudo sed -i "s|/var/www/nautilus.uchetgram.ru|$P|g" /etc/sudoers.d/deploy
 sudo chmod 440 /etc/sudoers.d/deploy
+
+# 2) Инициализация БД: владелец БД и schema public (значения — как в server/.env из DATABASE_URL)
+sudo -u postgres env PGUSER=nautilus_user PGHOST=localhost PGPORT=5432 PGDATABASE=nautilus_db bash "$P/deploy/init_postgres_db.sh"
 ```
-После обновления репозитория при необходимости обнови файл в `/etc/sudoers.d/deploy` (например, заново скопируй `deploy/sudoers.deploy` и поправь путь), чтобы и вторая строка (инициализация БД) работала.
 
-**Без sudoers:** вручную выполни `sudo chown -R deploy:deploy .../server`; инициализацию БД один раз выполни от postgres (см. п. 3.7).
+После этого запушь в `main` или перезапусти workflow — деплой должен пройти до конца (фронт, venv, миграции, перезапуск API).
 
-### 3.7. Если деплой падает: БД
+### 3.7. Если деплой снова падает на БД
 
-- **alembic: "permission denied for schema public"** — при деплое скрипт вызывает `sudo -u postgres .../deploy/run_db_init_as_postgres.sh` (инициализация БД и прав на `public`). Если это не настроено, добавь в sudoers вторую строку из `deploy/sudoers.deploy` и обнови путь при необходимости. Либо один раз выполни от postgres: `sudo -u postgres env PGUSER=... PGHOST=... PGPORT=... PGDATABASE=... bash $SERVER_PATH/deploy/init_postgres_db.sh`.
+Сделай п. 3.6 ещё раз (скопировать актуальный `deploy/sudoers.deploy`, поправить путь в нём, затем `init_postgres_db.sh` от postgres). Убедись, что в `server/.env` в DATABASE_URL указаны те же PGUSER и PGDATABASE, что в команде env выше.
 
 ### 3.8. Systemd-сервис для Python API (опционально)
 
