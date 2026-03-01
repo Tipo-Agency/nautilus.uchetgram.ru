@@ -80,11 +80,21 @@ if [ -d "server" ] && [ -f "server/requirements.txt" ]; then
   (cd "$SERVER_PATH/server" && {
     rm -rf venv 2>/dev/null
     if [ -d venv ]; then
-      echo "venv not removed (permission?), trying sudo rm -rf venv..."
-      sudo rm -rf venv || { echo "❌ Cannot remove server/venv. On server run: sudo chown -R deploy:deploy $SERVER_PATH/server"; exit 1; }
+      echo "⚠️ venv not removed (permission?) — trying to fix ownership..."
+      if sudo -n chown -R "$(whoami):$(whoami)" "$SERVER_PATH/server" 2>/dev/null; then
+        rm -rf venv 2>/dev/null
+      fi
     fi
-    python3 -m venv venv
-    . venv/bin/activate && pip install -q -r requirements.txt
+    if [ -d venv ]; then
+      echo "⚠️ Reusing existing venv, updating packages..."
+      if ! (. venv/bin/activate && pip install -q -r requirements.txt); then
+        echo "❌ pip failed. One-time on server: copy deploy/sudoers.deploy to /etc/sudoers.d/ (fix path) and chmod 440, or run: sudo chown -R $(whoami):$(whoami) $SERVER_PATH/server"
+        exit 1
+      fi
+    else
+      python3 -m venv venv
+      . venv/bin/activate && pip install -q -r requirements.txt
+    fi
   }) || { echo "❌ Python API venv/pip failed"; exit 1; }
   (cd "$SERVER_PATH/server" && . venv/bin/activate && python -c "import asyncpg; import alembic" 2>/dev/null) || {
     echo "❌ asyncpg or alembic not installed. Check requirements.txt."

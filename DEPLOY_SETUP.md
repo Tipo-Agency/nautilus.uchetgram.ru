@@ -89,12 +89,26 @@ root /var/www/nautilus.uchetgram.ru/dist.live;
 # Python 3.9+
 ```
 
-### 3.6. Если деплой падает: venv и БД
+### 3.6. Один раз: права на server/ (чтобы автодеплой проходил без ручных шагов)
 
-- **venv: "Cannot remove server/venv"** — каталог `server/venv` мог быть создан от root. Один раз на сервере: `sudo chown -R deploy:deploy /var/www/nautilus.uchetgram.ru/server` (или `$SERVER_PATH/server`). Либо разрешить deploy выполнять `sudo rm -rf .../server/venv` через sudoers.
-- **alembic: "permission denied for schema public"** — скрипт деплоя выведет подсказку с готовой командой. Выполни её один раз на сервере от postgres: `sudo -u postgres env PGUSER=... PGHOST=... PGPORT=... PGDATABASE=... bash $SERVER_PATH/deploy/init_postgres_db.sh` (значения подставь из вывода или из `.env` / DATABASE_URL).
+Если `server/venv` создан от root, деплой не сможет его удалить. Сделай **один раз** на сервере один из вариантов:
 
-### 3.7. Systemd-сервис для Python API (опционально)
+**Вариант А — sudoers (рекомендуется):** скрипт сам поправит владельца без пароля.
+```bash
+sudo cp /var/www/nautilus.uchetgram.ru/deploy/sudoers.deploy /etc/sudoers.d/deploy
+# Если SERVER_PATH другой — поправь путь в файле:
+# sudo sed -i 's|/var/www/nautilus.uchetgram.ru|ТВОЙ_ПУТЬ|g' /etc/sudoers.d/deploy
+sudo chmod 440 /etc/sudoers.d/deploy
+```
+После этого при первом же деплое скрипт выполнит `sudo chown -R deploy:deploy .../server`, удалит venv и создаст новый.
+
+**Вариант Б — вручную:** `sudo chown -R deploy:deploy /var/www/nautilus.uchetgram.ru/server` (или твой `$SERVER_PATH/server`).
+
+### 3.7. Если деплой падает: БД
+
+- **alembic: "permission denied for schema public"** — скрипт выведет готовую команду. Выполни её один раз от postgres: `sudo -u postgres env PGUSER=... PGHOST=... PGPORT=... PGDATABASE=... bash $SERVER_PATH/deploy/init_postgres_db.sh`.
+
+### 3.8. Systemd-сервис для Python API (опционально)
 
 Файл `/etc/systemd/system/nautilus-api.service`:
 
@@ -119,7 +133,7 @@ WantedBy=multi-user.target
 
 Если у пользователя `deploy` есть `sudo -u postgres`, при деплое автоматически выполняется `deploy/init_postgres_db.sh`: создаётся БД (если нет), назначается владелец БД и схемы `public`, выдаются права (GRANT). Иначе создай БД и пользователя вручную и один раз выполни от postgres: `ALTER DATABASE dbname OWNER TO app_user; ALTER SCHEMA public OWNER TO app_user; GRANT ALL ON SCHEMA public TO app_user;` (или скопируй логику из `deploy/init_postgres_db.sh`).
 
-### 3.8. Первый ручной деплой (проверка)
+### 3.9. Первый ручной деплой (проверка)
 
 ```bash
 cd /var/www/nautilus.uchetgram.ru

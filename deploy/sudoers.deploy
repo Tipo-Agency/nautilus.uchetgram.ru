@@ -1,0 +1,6 @@
+# One-time: copy to /etc/sudoers.d/deploy and fix the path to your SERVER_PATH.
+# Example: sudo cp deploy/sudoers.deploy /etc/sudoers.d/deploy
+#          sudo sed -i 's|/var/www/nautilus.uchetgram.ru|YOUR_SERVER_PATH|g' /etc/sudoers.d/deploy
+#          sudo chmod 440 /etc/sudoers.d/deploy
+# Then deploy user can fix server dir ownership without password and venv will be recreated.
+deploy ALL=(ALL) NOPASSWD: /usr/bin/chown -R deploy\:deploy /var/www/nautilus.uchetgram.ru/server
